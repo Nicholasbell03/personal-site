@@ -46,6 +46,29 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 # 10) Copy Supervisor config
 COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Configure PHP and PHP-FPM
+RUN { \
+    echo 'display_errors = On'; \
+    echo 'display_startup_errors = On'; \
+    echo 'error_reporting = E_ALL'; \
+    echo 'log_errors = On'; \
+    echo 'error_log = /dev/stderr'; \
+} > /usr/local/etc/php/conf.d/error-logging.ini
+
+# Configure PHP-FPM
+RUN { \
+    echo '[www]'; \
+    echo 'pm = dynamic'; \
+    echo 'pm.max_children = 10'; \
+    echo 'pm.start_servers = 2'; \
+    echo 'pm.min_spare_servers = 1'; \
+    echo 'pm.max_spare_servers = 3'; \
+    echo 'catch_workers_output = yes'; \
+    echo 'decorate_workers_output = no'; \
+    echo 'php_admin_flag[log_errors] = on'; \
+    echo 'php_admin_value[error_log] = /dev/stderr'; \
+} > /usr/local/etc/php-fpm.d/www.conf
+
 # 11) Expose port 80 for Nginx
 EXPOSE 80
 
