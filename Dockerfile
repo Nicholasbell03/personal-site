@@ -15,11 +15,11 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 3) Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql zip
-
-# 4) Configure nginx
+# 3) Remove default Nginx configuration
 RUN rm -rf /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
+
+# 4) Install PHP extensions (including pdo_pgsql)
+RUN docker-php-ext-install pdo pdo_pgsql
 
 # 5) Set the working directory
 WORKDIR /var/www
@@ -34,7 +34,7 @@ RUN mkdir -p /var/www/storage/logs \
     && mkdir -p /var/www/storage/framework/cache \
     && mkdir -p /var/www/bootstrap/cache \
     && chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage /var/www/bootstrap/cache
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # 8) Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -46,8 +46,8 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 # 10) Copy Supervisor config
 COPY ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 11) Expose port 80 for Nginx and 443 for SSL
-EXPOSE 443 80
+# 11) Expose port 80 for Nginx
+EXPOSE 80
 
 # 12) Start Supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
