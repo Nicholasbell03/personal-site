@@ -4,17 +4,14 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: laravel_app
-    
-    # Use the .env file in the project root
-    env_file:
-      - .env
-
+    environment:
+      WEBROOT: /var/www/html/public
+      REAL_IP_HEADER: 1
+      PHP_ERRORS_STDERR: 1
     volumes:
-      - .:/var/www
-    working_dir: /var/www
-
+      - .:/var/www/html
     ports:
-      - "8080:80"  # Map host port 8080 to container port 80 (Nginx)
+      - "8080:80"
     depends_on:
       - db
 
