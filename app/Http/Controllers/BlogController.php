@@ -9,7 +9,10 @@ class BlogController extends Controller
 {
     public function index()
     {
-        $blogs = ['id' => 1, 'title' => 'Blog 1', 'content' => 'Content 1'];
+        $blogs = [
+            ['id' => 1, 'title' => 'Blog 1', 'content' => 'Content 1'],
+            ['id' => 2, 'title' => 'Blog 2', 'content' => 'Content 2']
+        ];
         return response()->json($blogs);
     }
 
