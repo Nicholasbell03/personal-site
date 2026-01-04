@@ -5,5 +5,8 @@ composer install --no-dev --working-dir=/var/www/html
 echo "Caching config..."
 php artisan optimize
 
+echo "Publishing Filament assets..."
+php artisan filament:assets --force
+
 echo "Running migrations..."
 php artisan migrate --force
