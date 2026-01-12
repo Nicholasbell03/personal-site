@@ -4,6 +4,8 @@ USER root
 
 WORKDIR /var/www/html
 
+RUN install-php-extensions intl
+
 COPY . .
 
 # Image config
