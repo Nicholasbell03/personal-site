@@ -55,7 +55,6 @@ class BlogResourceTest extends TestCase
     {
         $newData = [
             'title' => 'My First Blog Post',
-            'slug' => 'my-first-blog-post',
             'excerpt' => 'This is a short excerpt.',
             'content' => '<p>This is the full content of the blog post.</p>',
             'status' => BlogStatus::Draft->value,
@@ -80,26 +79,27 @@ class BlogResourceTest extends TestCase
             ->test(CreateBlog::class)
             ->fillForm([
                 'title' => '',
-                'slug' => '',
                 'content' => '',
             ])
             ->call('create')
-            ->assertHasFormErrors(['title', 'slug', 'content']);
+            ->assertHasFormErrors(['title', 'content']);
     }
 
-    public function test_can_validate_unique_slug(): void
+    public function test_slug_is_auto_generated_from_title(): void
     {
-        Blog::factory()->create(['slug' => 'existing-slug']);
-
         Livewire::actingAs($this->user)
             ->test(CreateBlog::class)
             ->fillForm([
-                'title' => 'New Blog',
-                'slug' => 'existing-slug',
-                'content' => 'Some content',
+                'title' => 'My Amazing Blog Post',
+                'content' => '<p>Content here</p>',
             ])
             ->call('create')
-            ->assertHasFormErrors(['slug']);
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas(Blog::class, [
+            'title' => 'My Amazing Blog Post',
+            'slug' => 'my-amazing-blog-post',
+        ]);
     }
 
     public function test_can_render_edit_page(): void
@@ -113,7 +113,7 @@ class BlogResourceTest extends TestCase
 
     public function test_can_update_blog(): void
     {
-        $blog = Blog::factory()->create();
+        $blog = Blog::factory()->create(['slug' => 'original-slug']);
 
         $updatedData = [
             'title' => 'Updated Title',
