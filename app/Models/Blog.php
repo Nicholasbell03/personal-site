@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BlogStatus;
+use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,7 @@ class Blog extends Model
 {
     /** @use HasFactory<\Database\Factories\BlogFactory> */
     use HasFactory;
+    use HasSlug;
 
     /**
      * @var list<string>
