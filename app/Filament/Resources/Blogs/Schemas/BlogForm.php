@@ -34,6 +34,7 @@ class BlogForm
                             }),
                         TextInput::make('slug')
                             ->required()
+                            ->readOnly(fn ($record) => ! $record)
                             ->unique(ignoreRecord: true),
                         FileUpload::make('featured_image')
                             ->image()
@@ -42,6 +43,7 @@ class BlogForm
                             ->columnSpanFull(),
                         RichEditor::make('content')
                             ->required()
+                            ->extraInputAttributes(['style' => 'min-height: 400px;'])
                             ->columnSpanFull(),
                         Textarea::make('excerpt')
                             ->rows(3)
@@ -61,9 +63,10 @@ class BlogForm
                             ]),
                         Section::make('SEO')
                             ->schema([
-                                TextInput::make('meta_description')
+                                Textarea::make('meta_description')
+                                    ->rows(3)
                                     ->maxLength(160)
-                                    ->helperText('Recommended: 150-160 characters'),
+                                    ->helperText('Recommended: 150-160 characters. Leave blank to generate from content.'),
                             ]),
                     ])
                     ->columnSpan(1),
