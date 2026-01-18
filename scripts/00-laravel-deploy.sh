@@ -6,7 +6,7 @@ echo "Caching config..."
 php artisan optimize
 
 echo "Publishing Filament assets..."
-php artisan filament:assets --force
+php artisan filament:assets
 
 echo "Running migrations..."
 php artisan migrate --force
