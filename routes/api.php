@@ -1,14 +1,13 @@
 <?php
 
+use App\Http\Controllers\BlogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BlogController;
-Route::group(['prefix' => 'blogs'], function () {
-    Route::get('/', [BlogController::class, 'index']);
-    Route::post('/blogs', [BlogController::class, 'store']);
-    Route::get('/blogs/{id}', [BlogController::class, 'show']);
-    Route::put('/blogs/{id}', [BlogController::class, 'update']);
-    Route::delete('/blogs/{id}', [BlogController::class, 'destroy']);
+
+Route::prefix('blogs')->group(function () {
+    Route::get('/', [BlogController::class, 'index'])->name('blogs.index');
+    Route::get('/featured', [BlogController::class, 'featured'])->name('blogs.featured');
+    Route::get('/{slug}', [BlogController::class, 'show'])->name('blogs.show');
 });
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {

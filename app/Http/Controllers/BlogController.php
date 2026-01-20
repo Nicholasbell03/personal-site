@@ -2,42 +2,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\BlogResource;
+use App\Http\Resources\BlogSummaryResource;
 use App\Models\Blog;
-use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BlogController extends Controller
 {
-    public function index()
+    public function index(): AnonymousResourceCollection
     {
-        $blogs = [
-            ['id' => 1, 'title' => 'Blog 1', 'content' => 'Content 1'],
-            ['id' => 2, 'title' => 'Blog 2', 'content' => 'Content 2']
-        ];
-        return response()->json($blogs);
+        $blogs = Blog::query()
+            ->published()
+            ->latestPublished()
+            ->paginate(10);
+
+        return BlogSummaryResource::collection($blogs);
     }
 
-    // public function store(Request $request)
-    // {
-    //     $blog = Blog::create($request->all());
-    //     return response()->json($blog, 201);
-    // }
+    public function featured(): AnonymousResourceCollection
+    {
+        $blogs = Blog::query()
+            ->published()
+            ->latestPublished()
+            ->limit(3)
+            ->get();
 
-    // public function show($id)
-    // {
-    //     $blog = Blog::findOrFail($id);
-    //     return response()->json($blog);
-    // }
+        return BlogSummaryResource::collection($blogs);
+    }
 
-    // public function update(Request $request, $id)
-    // {
-    //     $blog = Blog::findOrFail($id);
-    //     $blog->update($request->all());
-    //     return response()->json($blog, 200);
-    // }
+    public function show(string $slug): BlogResource
+    {
+        $blog = Blog::query()
+            ->published()
+            ->where('slug', $slug)
+            ->firstOrFail();
 
-    // public function destroy($id)
-    // {
-    //     Blog::destroy($id);
-    //     return response()->json(null, 204);
-    // }
+        return new BlogResource($blog);
+    }
 }
