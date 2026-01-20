@@ -14,7 +14,7 @@ class BlogApiTest extends TestCase
     {
         Blog::factory()->published()->count(5)->create();
 
-        $response = $this->getJson('/api/blogs/featured');
+        $response = $this->getJson('/api/v1/blogs/featured');
 
         $response->assertStatus(200)
             ->assertJsonCount(3, 'data');
@@ -25,7 +25,7 @@ class BlogApiTest extends TestCase
         Blog::factory()->published()->count(2)->create();
         Blog::factory()->draft()->count(3)->create();
 
-        $response = $this->getJson('/api/blogs/featured');
+        $response = $this->getJson('/api/v1/blogs/featured');
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');
@@ -35,7 +35,7 @@ class BlogApiTest extends TestCase
     {
         $blog = Blog::factory()->published()->create();
 
-        $response = $this->getJson('/api/blogs/featured');
+        $response = $this->getJson('/api/v1/blogs/featured');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -60,7 +60,7 @@ class BlogApiTest extends TestCase
         $newest = Blog::factory()->published()->create(['published_at' => now()]);
         $middle = Blog::factory()->published()->create(['published_at' => now()->subDay()]);
 
-        $response = $this->getJson('/api/blogs/featured');
+        $response = $this->getJson('/api/v1/blogs/featured');
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -74,7 +74,7 @@ class BlogApiTest extends TestCase
     {
         Blog::factory()->published()->count(15)->create();
 
-        $response = $this->getJson('/api/blogs');
+        $response = $this->getJson('/api/v1/blogs');
 
         $response->assertStatus(200)
             ->assertJsonCount(10, 'data')
@@ -95,7 +95,7 @@ class BlogApiTest extends TestCase
         Blog::factory()->published()->count(3)->create();
         Blog::factory()->draft()->count(5)->create();
 
-        $response = $this->getJson('/api/blogs');
+        $response = $this->getJson('/api/v1/blogs');
 
         $response->assertStatus(200)
             ->assertJsonCount(3, 'data');
@@ -107,7 +107,7 @@ class BlogApiTest extends TestCase
     {
         Blog::factory()->published()->count(25)->create();
 
-        $response = $this->getJson('/api/blogs');
+        $response = $this->getJson('/api/v1/blogs');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -124,7 +124,7 @@ class BlogApiTest extends TestCase
     {
         Blog::factory()->published()->count(15)->create();
 
-        $response = $this->getJson('/api/blogs?page=2');
+        $response = $this->getJson('/api/v1/blogs?page=2');
 
         $response->assertStatus(200)
             ->assertJsonCount(5, 'data')
@@ -142,7 +142,7 @@ class BlogApiTest extends TestCase
             'content' => '<p>Test content</p>',
         ]);
 
-        $response = $this->getJson('/api/blogs/my-test-blog');
+        $response = $this->getJson('/api/v1/blogs/my-test-blog');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -168,7 +168,7 @@ class BlogApiTest extends TestCase
 
     public function test_show_endpoint_returns_404_for_non_existent_slug(): void
     {
-        $response = $this->getJson('/api/blogs/non-existent-slug');
+        $response = $this->getJson('/api/v1/blogs/non-existent-slug');
 
         $response->assertStatus(404);
     }
@@ -177,7 +177,7 @@ class BlogApiTest extends TestCase
     {
         Blog::factory()->draft()->create(['slug' => 'draft-blog']);
 
-        $response = $this->getJson('/api/blogs/draft-blog');
+        $response = $this->getJson('/api/v1/blogs/draft-blog');
 
         $response->assertStatus(404);
     }
@@ -187,7 +187,7 @@ class BlogApiTest extends TestCase
         $words = str_repeat('word ', 400);
         $blog = Blog::factory()->published()->create(['content' => $words]);
 
-        $response = $this->getJson('/api/blogs/' . $blog->slug);
+        $response = $this->getJson('/api/v1/blogs/'.$blog->slug);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -202,7 +202,7 @@ class BlogApiTest extends TestCase
         $words = str_repeat('word ', 201);
         $blog = Blog::factory()->published()->create(['content' => $words]);
 
-        $response = $this->getJson('/api/blogs/' . $blog->slug);
+        $response = $this->getJson('/api/v1/blogs/'.$blog->slug);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -216,7 +216,7 @@ class BlogApiTest extends TestCase
     {
         $blog = Blog::factory()->published()->create(['content' => '']);
 
-        $response = $this->getJson('/api/blogs/' . $blog->slug);
+        $response = $this->getJson('/api/v1/blogs/'.$blog->slug);
 
         $response->assertStatus(200)
             ->assertJson([

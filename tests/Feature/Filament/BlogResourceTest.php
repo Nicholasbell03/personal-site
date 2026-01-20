@@ -172,4 +172,63 @@ class BlogResourceTest extends TestCase
             ->assertCanSeeTableRecords([$matchingBlog])
             ->assertCanNotSeeTableRecords([$nonMatchingBlog]);
     }
+
+    public function test_published_at_is_auto_set_when_status_changes_to_published(): void
+    {
+        $blog = Blog::factory()->draft()->create();
+
+        $this->assertNull($blog->published_at);
+
+        Livewire::actingAs($this->user)
+            ->test(EditBlog::class, ['record' => $blog->id])
+            ->fillForm([
+                'status' => BlogStatus::Published->value,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $blog->refresh();
+        $this->assertNotNull($blog->published_at);
+    }
+
+    public function test_published_at_is_cleared_when_status_changes_to_draft(): void
+    {
+        $blog = Blog::factory()->published()->create();
+
+        $this->assertNotNull($blog->published_at);
+
+        Livewire::actingAs($this->user)
+            ->test(EditBlog::class, ['record' => $blog->id])
+            ->fillForm([
+                'status' => BlogStatus::Draft->value,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $blog->refresh();
+        $this->assertNull($blog->published_at);
+    }
+
+    public function test_existing_published_at_is_preserved_when_already_published(): void
+    {
+        $originalPublishedAt = now()->subWeek();
+        $blog = Blog::factory()->create([
+            'status' => BlogStatus::Published,
+            'published_at' => $originalPublishedAt,
+        ]);
+
+        Livewire::actingAs($this->user)
+            ->test(EditBlog::class, ['record' => $blog->id])
+            ->fillForm([
+                'title' => 'Updated Title',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $blog->refresh();
+        $this->assertEquals(
+            $originalPublishedAt->toDateTimeString(),
+            $blog->published_at->toDateTimeString()
+        );
+    }
 }
