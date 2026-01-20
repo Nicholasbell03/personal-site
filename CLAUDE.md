@@ -1,3 +1,36 @@
+# Project-Specific Instructions
+
+## Docker Environment
+
+This project uses Docker for development. The local PHP version may not match the required PHP 8.4+.
+
+**Always use Docker to run PHP/Artisan commands:**
+
+```bash
+# Run artisan commands
+docker exec laravel_app php artisan <command>
+
+# Run composer commands
+docker exec laravel_app composer <command>
+
+# Run pint
+docker exec laravel_app vendor/bin/pint --dirty
+
+# Run tests
+docker exec laravel_app php artisan test --compact
+
+# Alternative using docker-compose
+docker compose exec app php artisan <command>
+```
+
+**Container details:**
+- Container name: `laravel_app`
+- Service name: `app`
+- PHP version: 8.4
+- Working directory: `/var/www/html`
+
+---
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
