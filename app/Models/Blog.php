@@ -4,15 +4,19 @@ namespace App\Models;
 
 use App\Enums\BlogStatus;
 use App\Models\Concerns\HasSlug;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Observers\BlogObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+#[ObservedBy(BlogObserver::class)]
 class Blog extends Model
 {
     /** @use HasFactory<\Database\Factories\BlogFactory> */
     use HasFactory;
+
     use HasSlug;
 
     /**
@@ -58,7 +62,7 @@ class Blog extends Model
     }
 
     /**
-     * @param Builder<Blog> $query
+     * @param  Builder<Blog>  $query
      * @return Builder<Blog>
      */
     public function scopePublished(Builder $query): Builder
@@ -68,7 +72,7 @@ class Blog extends Model
     }
 
     /**
-     * @param Builder<Blog> $query
+     * @param  Builder<Blog>  $query
      * @return Builder<Blog>
      */
     public function scopeLatestPublished(Builder $query): Builder

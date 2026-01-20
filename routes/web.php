@@ -10,15 +10,15 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
-Route::get('/phpinfo', function() {
+Route::get('/phpinfo', function () {
     return phpinfo();
 });
 
-Route::get('/test', function() {
+Route::get('/test', function () {
     return response()->json([
         'message' => 'Basic route working',
         'php_version' => PHP_VERSION,
-        'laravel_version' => app()->version()
+        'laravel_version' => app()->version(),
     ]);
 });
 
