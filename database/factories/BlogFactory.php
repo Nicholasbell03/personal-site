@@ -18,7 +18,7 @@ class BlogFactory extends Factory
      */
     public function definition(): array
     {
-        $title = fake()->sentence();
+        $title = fake()->unique()->sentence();
 
         return [
             'title' => $title,
