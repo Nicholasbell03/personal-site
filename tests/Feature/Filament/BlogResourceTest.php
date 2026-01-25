@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Filament;
 
-use App\Enums\BlogStatus;
+use App\Enums\PublishStatus;
 use App\Filament\Resources\Blogs\BlogResource;
 use App\Filament\Resources\Blogs\Pages\CreateBlog;
 use App\Filament\Resources\Blogs\Pages\EditBlog;
@@ -57,7 +57,7 @@ class BlogResourceTest extends TestCase
             'title' => 'My First Blog Post',
             'excerpt' => 'This is a short excerpt.',
             'content' => '<p>This is the full content of the blog post.</p>',
-            'status' => BlogStatus::Draft->value,
+            'status' => PublishStatus::Draft->value,
             'meta_description' => 'A meta description for SEO.',
         ];
 
@@ -119,7 +119,7 @@ class BlogResourceTest extends TestCase
             'title' => 'Updated Title',
             'slug' => 'updated-slug',
             'content' => '<p>Updated content</p>',
-            'status' => BlogStatus::Published->value,
+            'status' => PublishStatus::Published->value,
         ];
 
         Livewire::actingAs($this->user)
@@ -156,7 +156,7 @@ class BlogResourceTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(ListBlogs::class)
             ->assertCanSeeTableRecords([$draftBlog, $publishedBlog])
-            ->filterTable('status', BlogStatus::Published->value)
+            ->filterTable('status', PublishStatus::Published->value)
             ->assertCanSeeTableRecords([$publishedBlog])
             ->assertCanNotSeeTableRecords([$draftBlog]);
     }
@@ -182,7 +182,7 @@ class BlogResourceTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(EditBlog::class, ['record' => $blog->id])
             ->fillForm([
-                'status' => BlogStatus::Published->value,
+                'status' => PublishStatus::Published->value,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -200,7 +200,7 @@ class BlogResourceTest extends TestCase
         Livewire::actingAs($this->user)
             ->test(EditBlog::class, ['record' => $blog->id])
             ->fillForm([
-                'status' => BlogStatus::Draft->value,
+                'status' => PublishStatus::Draft->value,
             ])
             ->call('save')
             ->assertHasNoFormErrors();
@@ -213,7 +213,7 @@ class BlogResourceTest extends TestCase
     {
         $originalPublishedAt = now()->subWeek();
         $blog = Blog::factory()->create([
-            'status' => BlogStatus::Published,
+            'status' => PublishStatus::Published,
             'published_at' => $originalPublishedAt,
         ]);
 

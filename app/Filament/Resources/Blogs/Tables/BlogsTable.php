@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Blogs\Tables;
 
-use App\Enums\BlogStatus;
+use App\Enums\PublishStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -38,7 +38,7 @@ class BlogsTable
             ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('status')
-                    ->options(BlogStatus::class),
+                    ->options(PublishStatus::class),
             ])
             ->recordActions([
                 ViewAction::make(),

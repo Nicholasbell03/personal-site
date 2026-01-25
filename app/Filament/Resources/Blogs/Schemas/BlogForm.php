@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Blogs\Schemas;
 
-use App\Enums\BlogStatus;
+use App\Enums\PublishStatus;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -56,8 +56,8 @@ class BlogForm
                         Section::make('Publishing')
                             ->schema([
                                 Select::make('status')
-                                    ->options(BlogStatus::class)
-                                    ->default(BlogStatus::Draft)
+                                    ->options(PublishStatus::class)
+                                    ->default(PublishStatus::Draft)
                                     ->required(),
                             ]),
                         Section::make('SEO')

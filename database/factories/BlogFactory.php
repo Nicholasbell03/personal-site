@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\BlogStatus;
+use App\Enums\PublishStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -26,7 +26,7 @@ class BlogFactory extends Factory
             'excerpt' => fake()->paragraph(),
             'content' => fake()->paragraphs(5, true),
             'featured_image' => null,
-            'status' => BlogStatus::Draft,
+            'status' => PublishStatus::Draft,
             'published_at' => null,
             'meta_description' => fake()->sentence(),
         ];
@@ -35,7 +35,7 @@ class BlogFactory extends Factory
     public function published(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => BlogStatus::Published,
+            'status' => PublishStatus::Published,
             'published_at' => now(),
         ]);
     }
@@ -43,7 +43,7 @@ class BlogFactory extends Factory
     public function draft(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => BlogStatus::Draft,
+            'status' => PublishStatus::Draft,
             'published_at' => null,
         ]);
     }

@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\BlogStatus;
+use App\Enums\PublishStatus;
+use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
-use App\Observers\BlogObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $excerpt
  * @property string $content
  * @property string|null $featured_image
- * @property BlogStatus $status
+ * @property PublishStatus $status
  * @property \Illuminate\Support\Carbon|null $published_at
  * @property string|null $meta_description
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -43,12 +42,12 @@ use Illuminate\Database\Eloquent\Model;
  * @method static Builder<static>|Blog whereUpdatedAt($value)
  * @mixin \Eloquent
  */
-#[ObservedBy(BlogObserver::class)]
 class Blog extends Model
 {
     /** @use HasFactory<\Database\Factories\BlogFactory> */
     use HasFactory;
 
+    use HasPublishStatus;
     use HasSlug;
 
     /**
@@ -78,7 +77,7 @@ class Blog extends Model
     protected function casts(): array
     {
         return [
-            'status' => BlogStatus::class,
+            'status' => PublishStatus::class,
             'published_at' => 'datetime',
         ];
     }
@@ -99,7 +98,7 @@ class Blog extends Model
      */
     public function scopePublished(Builder $query): Builder
     {
-        return $query->where('status', BlogStatus::Published)
+        return $query->where('status', PublishStatus::Published)
             ->whereNotNull('published_at');
     }
 
