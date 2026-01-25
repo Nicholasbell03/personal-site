@@ -1,18 +1,20 @@
 <?php
 
-namespace App\Filament\Resources\Blogs\Tables;
+namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\PublishStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
-class BlogsTable
+class ProjectsTable
 {
     public static function configure(Table $table): Table
     {
@@ -26,6 +28,13 @@ class BlogsTable
                 TextColumn::make('status')
                     ->badge()
                     ->sortable(),
+                IconColumn::make('is_featured')
+                    ->boolean()
+                    ->label('Featured'),
+                TextColumn::make('technologies.name')
+                    ->badge()
+                    ->limitList(3)
+                    ->separator(', '),
                 TextColumn::make('published_at')
                     ->dateTime()
                     ->sortable()
@@ -39,6 +48,8 @@ class BlogsTable
             ->filters([
                 SelectFilter::make('status')
                     ->options(PublishStatus::class),
+                TernaryFilter::make('is_featured')
+                    ->label('Featured'),
             ])
             ->recordActions([
                 ViewAction::make(),

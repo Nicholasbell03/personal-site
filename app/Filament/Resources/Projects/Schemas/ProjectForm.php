@@ -1,20 +1,22 @@
 <?php
 
-namespace App\Filament\Resources\Blogs\Schemas;
+namespace App\Filament\Resources\Projects\Schemas;
 
 use App\Enums\PublishStatus;
+use App\Models\Technology;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
 
-class BlogForm
+class ProjectForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -37,16 +39,15 @@ class BlogForm
                             ->unique(ignoreRecord: true),
                         FileUpload::make('featured_image')
                             ->image()
-                            ->directory('blog-images')
+                            ->directory('project-images')
                             ->visibility('public')
                             ->columnSpanFull(),
-                        RichEditor::make('content')
-                            ->required()
-                            ->extraInputAttributes(['style' => 'min-height: 400px;'])
-                            ->columnSpanFull(),
-                        Textarea::make('excerpt')
+                        Textarea::make('description')
                             ->rows(3)
-                            ->helperText('Leave blank to generate from content')
+                            ->helperText('Short description for listings')
+                            ->columnSpanFull(),
+                        RichEditor::make('long_description')
+                            ->extraInputAttributes(['style' => 'min-height: 400px;'])
                             ->columnSpanFull(),
                     ])
                     ->columns(2)
@@ -59,13 +60,32 @@ class BlogForm
                                     ->options(PublishStatus::class)
                                     ->default(PublishStatus::Draft)
                                     ->required(),
+                                Toggle::make('is_featured')
+                                    ->label('Featured Project')
+                                    ->helperText('Show on homepage'),
                             ]),
-                        Section::make('SEO')
+                        Section::make('Links')
                             ->schema([
-                                Textarea::make('meta_description')
-                                    ->rows(3)
-                                    ->maxLength(160)
-                                    ->helperText('Recommended: 150-160 characters. Leave blank to generate from content.'),
+                                TextInput::make('project_url')
+                                    ->label('Project URL')
+                                    ->url()
+                                    ->placeholder('https://example.com'),
+                                TextInput::make('github_url')
+                                    ->label('GitHub URL')
+                                    ->url()
+                                    ->placeholder('https://github.com/...'),
+                            ]),
+                        Section::make('Technologies')
+                            ->schema([
+                                Select::make('technologies')
+                                    ->relationship('technologies', 'name')
+                                    ->multiple()
+                                    ->preload()
+                                    ->createOptionForm([
+                                        TextInput::make('name')
+                                            ->required()
+                                            ->unique(Technology::class, 'name'),
+                                    ]),
                             ]),
                     ])
                     ->columnSpan(1),
