@@ -31,6 +31,80 @@ docker compose exec app php artisan <command>
 
 ---
 
+## Related Frontend Repository
+
+This Laravel backend serves as the API for a React frontend located at `../nickbell-frontend`.
+
+**Frontend Tech Stack:**
+- React 19 + TypeScript + Vite 7
+- Tailwind CSS v4
+- React Router v7 (with lazy loading)
+- UI: Headless UI, Radix UI primitives, Lucide icons
+
+**Development URLs:**
+- Backend (this repo): `http://localhost:8080`
+- Frontend: `http://localhost:5173`
+- CORS is configured via `ALLOWED_ORIGINS` in `.env`
+
+**Frontend Commands:**
+```bash
+cd ../nickbell-frontend
+yarn dev      # Start dev server
+yarn build    # Production build
+```
+
+### API Integration Points
+
+**Blog API (implemented):**
+- `GET /api/v1/blogs` - Paginated list (BlogSummaryResource)
+- `GET /api/v1/blogs/featured` - 3 featured blogs
+- `GET /api/v1/blogs/{slug}` - Single blog (BlogResource)
+
+**Projects API:** Not yet implemented - frontend uses mock data
+
+**Frontend routes consuming the API:**
+- `/` - Home (featured blogs, projects preview)
+- `/blog` - Blog list page
+- `/blog/:slug` - Blog detail page
+- `/projects` - Projects list (mock data)
+- `/projects/:slug` - Project detail (mock data)
+
+### API Response Structures
+
+**BlogSummaryResource (for listings):**
+```typescript
+{
+  id: number
+  title: string
+  slug: string
+  excerpt: string | null
+  featured_image: string | null  // Full URL from Storage
+  published_at: string           // ISO8601
+  read_time: number              // Calculated from word count
+}
+```
+
+**BlogResource (for detail pages):**
+```typescript
+{
+  // ...BlogSummaryResource fields plus:
+  content: string
+  meta_description: string | null
+}
+```
+
+### Working Across Both Repos
+
+To work on both repos simultaneously, run Claude Code from the parent directory:
+```bash
+cd /Users/nickbell/Dev\ Pvt
+claude
+```
+
+Or access frontend files from this repo using paths like `../nickbell-frontend/src/...`
+
+---
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
