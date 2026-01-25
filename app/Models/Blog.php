@@ -11,6 +11,18 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $title
+ * @property string $slug
+ * @property string|null $excerpt
+ * @property string|null $content
+ * @property string|null $featured_image
+ * @property BlogStatus $status
+ * @property \Illuminate\Support\Carbon|null $published_at
+ * @property string|null $meta_description
+ * @property-read int $read_time
+ */
 #[ObservedBy(BlogObserver::class)]
 class Blog extends Model
 {
