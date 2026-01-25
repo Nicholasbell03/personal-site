@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Enums\PublishStatus;
+use Illuminate\Database\Eloquent\Builder;
 
 trait HasPublishStatus
 {
@@ -19,5 +20,17 @@ trait HasPublishStatus
                 }
             }
         });
+    }
+
+    /**
+     * Scope a query to only include published records.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', PublishStatus::Published)
+            ->whereNotNull('published_at');
     }
 }

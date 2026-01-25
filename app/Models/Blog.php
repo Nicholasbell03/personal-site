@@ -96,16 +96,6 @@ class Blog extends Model
      * @param  Builder<Blog>  $query
      * @return Builder<Blog>
      */
-    public function scopePublished(Builder $query): Builder
-    {
-        return $query->where('status', PublishStatus::Published)
-            ->whereNotNull('published_at');
-    }
-
-    /**
-     * @param  Builder<Blog>  $query
-     * @return Builder<Blog>
-     */
     public function scopeLatestPublished(Builder $query): Builder
     {
         return $query->orderByDesc('published_at');

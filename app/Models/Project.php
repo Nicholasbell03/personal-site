@@ -84,16 +84,6 @@ class Project extends Model
      * @param  Builder<Project>  $query
      * @return Builder<Project>
      */
-    public function scopePublished(Builder $query): Builder
-    {
-        return $query->where('status', PublishStatus::Published)
-            ->whereNotNull('published_at');
-    }
-
-    /**
-     * @param  Builder<Project>  $query
-     * @return Builder<Project>
-     */
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
