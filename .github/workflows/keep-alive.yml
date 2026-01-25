@@ -2,8 +2,8 @@ name: Keep Render Alive
 
 on:
   schedule:
-    # Run every 10 minutes to keep the free tier service active
-    - cron: '*/10 * * * *'
+    # Run every at the 7th, 17th, 27th, 37th, 47th, and 57th minute of the hour
+    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch: # Allow manual triggering for testing
 
 jobs:
