@@ -16,12 +16,32 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $title
  * @property string $slug
  * @property string|null $excerpt
- * @property string|null $content
+ * @property string $content
  * @property string|null $featured_image
  * @property BlogStatus $status
  * @property \Illuminate\Support\Carbon|null $published_at
  * @property string|null $meta_description
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read int $read_time
+ * @method static \Database\Factories\BlogFactory factory($count = null, $state = [])
+ * @method static Builder<static>|Blog latestPublished()
+ * @method static Builder<static>|Blog newModelQuery()
+ * @method static Builder<static>|Blog newQuery()
+ * @method static Builder<static>|Blog published()
+ * @method static Builder<static>|Blog query()
+ * @method static Builder<static>|Blog whereContent($value)
+ * @method static Builder<static>|Blog whereCreatedAt($value)
+ * @method static Builder<static>|Blog whereExcerpt($value)
+ * @method static Builder<static>|Blog whereFeaturedImage($value)
+ * @method static Builder<static>|Blog whereId($value)
+ * @method static Builder<static>|Blog whereMetaDescription($value)
+ * @method static Builder<static>|Blog wherePublishedAt($value)
+ * @method static Builder<static>|Blog whereSlug($value)
+ * @method static Builder<static>|Blog whereStatus($value)
+ * @method static Builder<static>|Blog whereTitle($value)
+ * @method static Builder<static>|Blog whereUpdatedAt($value)
+ * @mixin \Eloquent
  */
 #[ObservedBy(BlogObserver::class)]
 class Blog extends Model
