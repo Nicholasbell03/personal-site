@@ -33,7 +33,7 @@ class BlogForm
                             }),
                         TextInput::make('slug')
                             ->required()
-                            ->readOnly(fn ($record) => ! $record)
+                            ->readOnly(fn ($record) => $record !== null)
                             ->unique(ignoreRecord: true),
                         FileUpload::make('featured_image')
                             ->image()

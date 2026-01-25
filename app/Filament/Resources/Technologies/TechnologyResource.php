@@ -40,7 +40,7 @@ class TechnologyResource extends Resource
                             }),
                         TextInput::make('slug')
                             ->required()
-                            ->readOnly(fn ($record) => ! $record)
+                            ->readOnly(fn ($record) => $record !== null)
                             ->unique(ignoreRecord: true),
                     ])
                     ->columns(2),
