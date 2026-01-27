@@ -8,6 +8,10 @@ RUN install-php-extensions intl
 
 COPY . .
 
+# Ensure storage and cache directories are writable
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
 # Image config
 ENV WEB_DOCUMENT_ROOT=/var/www/html/public
 ENV PHP_DISPLAY_ERRORS=stderr
