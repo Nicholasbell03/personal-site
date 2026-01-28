@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\PublishStatus;
+use App\Models\Project;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -52,6 +55,15 @@ class ProjectsTable
                     ->label('Featured'),
             ])
             ->recordActions([
+                Action::make('preview')
+                    ->icon(Heroicon::OutlinedEye)
+                    ->url(fn (Project $record): string => sprintf(
+                        '%s/projects/%s?preview=%s',
+                        config('app.frontend_url'),
+                        $record->slug,
+                        config('app.preview_token')
+                    ))
+                    ->openUrlInNewTab(),
                 ViewAction::make(),
                 EditAction::make(),
             ])

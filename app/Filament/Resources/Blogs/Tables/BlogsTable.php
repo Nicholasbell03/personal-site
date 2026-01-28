@@ -3,10 +3,13 @@
 namespace App\Filament\Resources\Blogs\Tables;
 
 use App\Enums\PublishStatus;
+use App\Models\Blog;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -41,6 +44,15 @@ class BlogsTable
                     ->options(PublishStatus::class),
             ])
             ->recordActions([
+                Action::make('preview')
+                    ->icon(Heroicon::OutlinedEye)
+                    ->url(fn (Blog $record): string => sprintf(
+                        '%s/blog/%s?preview=%s',
+                        config('app.frontend_url'),
+                        $record->slug,
+                        config('app.preview_token')
+                    ))
+                    ->openUrlInNewTab(),
                 ViewAction::make(),
                 EditAction::make(),
             ])
