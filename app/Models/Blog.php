@@ -6,7 +6,6 @@ use App\Enums\PublishStatus;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,7 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $meta_description
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read int $read_time
+ * @property int $read_time
  * @method static \Database\Factories\BlogFactory factory($count = null, $state = [])
  * @method static Builder<static>|Blog latestPublished()
  * @method static Builder<static>|Blog newModelQuery()
@@ -65,13 +64,6 @@ class Blog extends Model
     ];
 
     /**
-     * @var list<string>
-     */
-    protected $appends = [
-        'read_time',
-    ];
-
-    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -79,17 +71,17 @@ class Blog extends Model
         return [
             'status' => PublishStatus::class,
             'published_at' => 'datetime',
+            'read_time' => 'integer',
         ];
     }
 
-    /**
-     * @return Attribute<int, never>
-     */
-    protected function readTime(): Attribute
+    protected static function booted(): void
     {
-        return Attribute::make(
-            get: fn (): int => (int) ceil(str_word_count(strip_tags($this->content ?? '')) / 200)
-        );
+        static::saving(function (Blog $blog) {
+            if ($blog->isDirty('content')) {
+                $blog->read_time = (int) ceil(str_word_count(strip_tags($blog->content ?? '')) / 200);
+            }
+        });
     }
 
     /**
