@@ -40,4 +40,13 @@ class BlogController extends Controller
 
         return new BlogResource($blog);
     }
+
+    public function preview(string $slug): BlogResource
+    {
+        $blog = Blog::query()
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return new BlogResource($blog);
+    }
 }

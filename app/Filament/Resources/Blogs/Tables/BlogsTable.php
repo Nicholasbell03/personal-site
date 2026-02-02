@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Blogs\Tables;
 
 use App\Enums\PublishStatus;
+use App\Filament\Actions\PreviewAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -41,6 +42,7 @@ class BlogsTable
                     ->options(PublishStatus::class),
             ])
             ->recordActions([
+                PreviewAction::make()->previewPath('blog'),
                 ViewAction::make(),
                 EditAction::make(),
             ])

@@ -44,4 +44,14 @@ class ProjectController extends Controller
 
         return new ProjectResource($project);
     }
+
+    public function preview(string $slug): ProjectResource
+    {
+        $project = Project::query()
+            ->where('slug', $slug)
+            ->with('technologies')
+            ->firstOrFail();
+
+        return new ProjectResource($project);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\PublishStatus;
+use App\Filament\Actions\PreviewAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -52,6 +53,7 @@ class ProjectsTable
                     ->label('Featured'),
             ])
             ->recordActions([
+                PreviewAction::make()->previewPath('projects'),
                 ViewAction::make(),
                 EditAction::make(),
             ])
