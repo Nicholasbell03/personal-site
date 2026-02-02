@@ -58,11 +58,12 @@ class ProjectsTable
                 Action::make('preview')
                     ->icon(Heroicon::OutlinedEye)
                     ->url(fn (Project $record): string => sprintf(
-                        '%s/projects/%s?preview=%s',
+                        '%s/projects/%s?token=%s',
                         config('app.frontend_url'),
                         $record->slug,
                         config('app.preview_token')
                     ))
+                    ->hidden(fn () => ! config('app.preview_token'))
                     ->openUrlInNewTab(),
                 ViewAction::make(),
                 EditAction::make(),

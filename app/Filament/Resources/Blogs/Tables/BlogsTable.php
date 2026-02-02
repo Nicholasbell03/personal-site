@@ -47,7 +47,7 @@ class BlogsTable
                 Action::make('preview')
                     ->icon(Heroicon::OutlinedEye)
                     ->url(fn (Blog $record): string => sprintf(
-                        '%s/blog/%s?preview=%s',
+                        '%s/blog/%s?token=%s',
                         config('app.frontend_url'),
                         $record->slug,
                         config('app.preview_token')
