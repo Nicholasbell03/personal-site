@@ -52,6 +52,7 @@ class BlogsTable
                         $record->slug,
                         config('app.preview_token')
                     ))
+                    ->hidden(fn () => ! config('app.preview_token'))
                     ->openUrlInNewTab(),
                 ViewAction::make(),
                 EditAction::make(),
