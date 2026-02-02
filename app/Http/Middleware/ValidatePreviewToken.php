@@ -16,10 +16,10 @@ class ValidatePreviewToken
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->query('token');
+        $token = $request->header('X-Preview-Token');
         $validToken = config('app.preview_token');
 
-        if (! $token || ! $validToken || $token !== $validToken) {
+        if (! $token || ! $validToken || ! hash_equals($validToken, $token)) {
             throw new AccessDeniedHttpException('Invalid preview token');
         }
 
