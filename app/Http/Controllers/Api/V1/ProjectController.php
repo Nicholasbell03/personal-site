@@ -6,47 +6,72 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\ProjectSummaryResource;
 use App\Models\Project;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Cache;
 
 class ProjectController extends Controller
 {
-    public function index(): AnonymousResourceCollection
-    {
-        $projects = Project::query()
-            ->published()
-            ->with('technologies')
-            ->latestPublished()
-            ->paginate(10);
+    private const CACHE_TTL = 60 * 60 * 24; // 24 hours
 
-        return ProjectSummaryResource::collection($projects);
+    public function index(Request $request): AnonymousResourceCollection|JsonResponse
+    {
+        $page = $request->integer('page', 1);
+        $cacheKey = Project::getApiCacheKey().".index.{$page}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            $projects = Project::query()
+                ->published()
+                ->with('technologies')
+                ->latestPublished()
+                ->paginate(10);
+
+            return ProjectSummaryResource::collection($projects)->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
-    public function featured(): AnonymousResourceCollection
+    public function featured(): JsonResponse
     {
-        $projects = Project::query()
-            ->published()
-            ->with('technologies')
-            ->featured()
-            ->latestPublished()
-            ->limit(3)
-            ->get();
+        $cacheKey = Project::getApiCacheKey().'.featured';
 
-        return ProjectSummaryResource::collection($projects);
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            $projects = Project::query()
+                ->published()
+                ->with('technologies')
+                ->featured()
+                ->latestPublished()
+                ->limit(3)
+                ->get();
+
+            return ProjectSummaryResource::collection($projects)->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
-    public function show(string $slug): ProjectResource
+    public function show(string $slug): JsonResponse
     {
-        $project = Project::query()
-            ->published()
-            ->where('slug', $slug)
-            ->with('technologies')
-            ->firstOrFail();
+        $cacheKey = Project::getApiCacheKey().".show.{$slug}";
 
-        return new ProjectResource($project);
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug) {
+            $project = Project::query()
+                ->published()
+                ->where('slug', $slug)
+                ->with('technologies')
+                ->firstOrFail();
+
+            return (new ProjectResource($project))->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
     public function preview(string $slug): ProjectResource
     {
+        // Preview is not cached - it's for unpublished content
         $project = Project::query()
             ->where('slug', $slug)
             ->with('technologies')
