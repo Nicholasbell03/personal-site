@@ -1,27 +1,19 @@
 <?php
 
-namespace Tests\Feature;
-
 use App\Models\Blog;
 use App\Models\Project;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-class PreviewApiTest extends TestCase
-{
-    use RefreshDatabase;
-
-    public function test_blog_preview_returns_draft_blog_with_valid_token(): void
-    {
+describe('blog preview', function () {
+    it('returns draft blog with valid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
-        $blog = Blog::factory()->draft()->create(['slug' => 'draft-blog']);
+        Blog::factory()->draft()->create(['slug' => 'draft-blog']);
 
         $response = $this->getJson('/api/v1/blogs/preview/draft-blog', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
                     'id',
@@ -35,28 +27,26 @@ class PreviewApiTest extends TestCase
                     'slug' => 'draft-blog',
                 ],
             ]);
-    }
+    });
 
-    public function test_blog_preview_returns_published_blog_with_valid_token(): void
-    {
+    it('returns published blog with valid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
-        $blog = Blog::factory()->published()->create(['slug' => 'published-blog']);
+        Blog::factory()->published()->create(['slug' => 'published-blog']);
 
         $response = $this->getJson('/api/v1/blogs/preview/published-blog', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertOk()
             ->assertJson([
                 'data' => [
                     'slug' => 'published-blog',
                 ],
             ]);
-    }
+    });
 
-    public function test_blog_preview_rejects_invalid_token(): void
-    {
+    it('rejects invalid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         Blog::factory()->draft()->create(['slug' => 'draft-blog']);
@@ -65,22 +55,20 @@ class PreviewApiTest extends TestCase
             'X-Preview-Token' => 'wrong-token',
         ]);
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_blog_preview_rejects_missing_token(): void
-    {
+    it('rejects missing token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         Blog::factory()->draft()->create(['slug' => 'draft-blog']);
 
         $response = $this->getJson('/api/v1/blogs/preview/draft-blog');
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_blog_preview_rejects_when_no_token_configured(): void
-    {
+    it('rejects when no token configured', function () {
         config(['app.preview_token' => null]);
 
         Blog::factory()->draft()->create(['slug' => 'draft-blog']);
@@ -89,58 +77,56 @@ class PreviewApiTest extends TestCase
             'X-Preview-Token' => 'any-token',
         ]);
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_blog_preview_returns_404_for_non_existent_slug(): void
-    {
+    it('returns 404 for non-existent slug', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         $response = $this->getJson('/api/v1/blogs/preview/non-existent', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(404);
-    }
+        $response->assertNotFound();
+    });
+});
 
-    public function test_project_preview_returns_draft_project_with_valid_token(): void
-    {
+describe('project preview', function () {
+    it('returns draft project with valid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
-        $project = Project::factory()->draft()->create(['slug' => 'draft-project']);
+        Project::factory()->draft()->create(['slug' => 'draft-project']);
 
         $response = $this->getJson('/api/v1/projects/preview/draft-project', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertOk()
             ->assertJson([
                 'data' => [
                     'slug' => 'draft-project',
                 ],
             ]);
-    }
+    });
 
-    public function test_project_preview_returns_published_project_with_valid_token(): void
-    {
+    it('returns published project with valid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
-        $project = Project::factory()->published()->create(['slug' => 'published-project']);
+        Project::factory()->published()->create(['slug' => 'published-project']);
 
         $response = $this->getJson('/api/v1/projects/preview/published-project', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertOk()
             ->assertJson([
                 'data' => [
                     'slug' => 'published-project',
                 ],
             ]);
-    }
+    });
 
-    public function test_project_preview_rejects_invalid_token(): void
-    {
+    it('rejects invalid token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         Project::factory()->draft()->create(['slug' => 'draft-project']);
@@ -149,22 +135,20 @@ class PreviewApiTest extends TestCase
             'X-Preview-Token' => 'wrong-token',
         ]);
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_project_preview_rejects_missing_token(): void
-    {
+    it('rejects missing token', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         Project::factory()->draft()->create(['slug' => 'draft-project']);
 
         $response = $this->getJson('/api/v1/projects/preview/draft-project');
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_project_preview_rejects_when_no_token_configured(): void
-    {
+    it('rejects when no token configured', function () {
         config(['app.preview_token' => null]);
 
         Project::factory()->draft()->create(['slug' => 'draft-project']);
@@ -173,17 +157,16 @@ class PreviewApiTest extends TestCase
             'X-Preview-Token' => 'any-token',
         ]);
 
-        $response->assertStatus(403);
-    }
+        $response->assertForbidden();
+    });
 
-    public function test_project_preview_returns_404_for_non_existent_slug(): void
-    {
+    it('returns 404 for non-existent slug', function () {
         config(['app.preview_token' => 'test-preview-token']);
 
         $response = $this->getJson('/api/v1/projects/preview/non-existent', [
             'X-Preview-Token' => 'test-preview-token',
         ]);
 
-        $response->assertStatus(404);
-    }
-}
+        $response->assertNotFound();
+    });
+});

@@ -1,47 +1,35 @@
 <?php
 
-namespace Tests\Feature\Auth;
-
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 
-class AuthenticationTest extends TestCase
-{
-    use RefreshDatabase;
+it('allows users to authenticate using login screen', function () {
+    $user = User::factory()->create();
 
-    public function test_users_can_authenticate_using_the_login_screen(): void
-    {
-        $user = User::factory()->create();
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
 
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
+    $this->assertAuthenticated();
+    $response->assertNoContent();
+});
 
-        $this->assertAuthenticated();
-        $response->assertNoContent();
-    }
+it('prevents authentication with invalid password', function () {
+    $user = User::factory()->create();
 
-    public function test_users_can_not_authenticate_with_invalid_password(): void
-    {
-        $user = User::factory()->create();
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'wrong-password',
+    ]);
 
-        $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+    $this->assertGuest();
+});
 
-        $this->assertGuest();
-    }
+it('allows users to logout', function () {
+    $user = User::factory()->create();
 
-    public function test_users_can_logout(): void
-    {
-        $user = User::factory()->create();
+    $response = $this->actingAs($user)->post('/logout');
 
-        $response = $this->actingAs($user)->post('/logout');
-
-        $this->assertGuest();
-        $response->assertNoContent();
-    }
-}
+    $this->assertGuest();
+    $response->assertNoContent();
+});

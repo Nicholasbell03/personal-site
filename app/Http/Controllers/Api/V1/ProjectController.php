@@ -70,7 +70,6 @@ class ProjectController extends Controller
 
     public function preview(string $slug): ProjectResource
     {
-        // Preview is not cached - it's for unpublished content
         $project = Project::query()
             ->where('slug', $slug)
             ->with('technologies')

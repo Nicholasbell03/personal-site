@@ -14,11 +14,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Project> $projects
- *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology query()
- *
+ * @property-read int|null $projects_count
+ * @method static \Database\Factories\TechnologyFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology whereSlug($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Technology whereUpdatedAt($value)
  * @mixin \Eloquent
  */
 class Technology extends Model
