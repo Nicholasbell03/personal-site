@@ -13,6 +13,7 @@ class BlogController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $blogs = Blog::query()
+            ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
             ->published()
             ->latestPublished()
             ->paginate(10);
@@ -23,6 +24,7 @@ class BlogController extends Controller
     public function featured(): AnonymousResourceCollection
     {
         $blogs = Blog::query()
+            ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
             ->published()
             ->latestPublished()
             ->limit(3)

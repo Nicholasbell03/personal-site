@@ -20,15 +20,18 @@ class BlogFactory extends Factory
     {
         $title = fake()->unique()->sentence();
 
+        $content = fake()->paragraphs(5, true);
+
         return [
             'title' => $title,
             'slug' => Str::slug($title),
             'excerpt' => fake()->paragraph(),
-            'content' => fake()->paragraphs(5, true),
+            'content' => $content,
             'featured_image' => null,
             'status' => PublishStatus::Draft,
             'published_at' => null,
             'meta_description' => fake()->sentence(),
+            'read_time' => (int) ceil(str_word_count(strip_tags($content)) / 200),
         ];
     }
 
