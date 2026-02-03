@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust Render.com's proxy so Laravel detects HTTPS correctly
         $middleware->trustProxies(at: '*');
 
+        // Add performance measurement to API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\MeasureRequestPerformance::class,
+        ]);
+
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
