@@ -8,14 +8,13 @@ use App\Http\Resources\ProjectSummaryResource;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Cache;
 
 class ProjectController extends Controller
 {
     private const CACHE_TTL = 60 * 60 * 24; // 24 hours
 
-    public function index(Request $request): AnonymousResourceCollection|JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $page = $request->integer('page', 1);
         $cacheKey = Project::getApiCacheKey().".index.{$page}";
