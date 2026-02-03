@@ -21,7 +21,6 @@ class BlogController extends Controller
 
         $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
             $blogs = Blog::query()
-                ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
                 ->published()
                 ->latestPublished()
                 ->paginate(10);
@@ -38,7 +37,6 @@ class BlogController extends Controller
 
         $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
             $blogs = Blog::query()
-                ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
                 ->published()
                 ->latestPublished()
                 ->limit(3)
@@ -68,7 +66,6 @@ class BlogController extends Controller
 
     public function preview(string $slug): BlogResource
     {
-        // Preview is not cached - it's for unpublished content
         $blog = Blog::query()
             ->where('slug', $slug)
             ->firstOrFail();
