@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Technology> $technologies
- *
  * @method static \Database\Factories\ProjectFactory factory($count = null, $state = [])
  * @method static Builder<static>|Project featured()
  * @method static Builder<static>|Project latestPublished()
@@ -34,7 +33,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @method static Builder<static>|Project newQuery()
  * @method static Builder<static>|Project published()
  * @method static Builder<static>|Project query()
- *
+ * @property-read int|null $technologies_count
+ * @method static Builder<static>|Project whereCreatedAt($value)
+ * @method static Builder<static>|Project whereDescription($value)
+ * @method static Builder<static>|Project whereFeaturedImage($value)
+ * @method static Builder<static>|Project whereGithubUrl($value)
+ * @method static Builder<static>|Project whereId($value)
+ * @method static Builder<static>|Project whereIsFeatured($value)
+ * @method static Builder<static>|Project whereLongDescription($value)
+ * @method static Builder<static>|Project whereProjectUrl($value)
+ * @method static Builder<static>|Project wherePublishedAt($value)
+ * @method static Builder<static>|Project whereSlug($value)
+ * @method static Builder<static>|Project whereStatus($value)
+ * @method static Builder<static>|Project whereTitle($value)
+ * @method static Builder<static>|Project whereUpdatedAt($value)
  * @mixin \Eloquent
  */
 class Project extends Model

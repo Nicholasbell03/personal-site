@@ -40,6 +40,7 @@ use Illuminate\Database\Eloquent\Model;
  * @method static Builder<static>|Blog whereStatus($value)
  * @method static Builder<static>|Blog whereTitle($value)
  * @method static Builder<static>|Blog whereUpdatedAt($value)
+ * @method static Builder<static>|Blog whereReadTime($value)
  * @mixin \Eloquent
  */
 class Blog extends Model
