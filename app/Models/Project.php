@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PublishStatus;
+use App\Models\Concerns\ClearsApiCache;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,6 +42,7 @@ class Project extends Model
     /** @use HasFactory<\Database\Factories\ProjectFactory> */
     use HasFactory;
 
+    use ClearsApiCache;
     use HasPublishStatus;
     use HasSlug;
 
@@ -96,5 +98,10 @@ class Project extends Model
     public function scopeLatestPublished(Builder $query): Builder
     {
         return $query->orderByDesc('published_at');
+    }
+
+    public static function getApiCacheKey(): string
+    {
+        return 'api.v1.projects';
     }
 }

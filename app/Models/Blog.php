@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PublishStatus;
+use App\Models\Concerns\ClearsApiCache;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,6 +47,7 @@ class Blog extends Model
     /** @use HasFactory<\Database\Factories\BlogFactory> */
     use HasFactory;
 
+    use ClearsApiCache;
     use HasPublishStatus;
     use HasSlug;
 
@@ -91,5 +93,10 @@ class Blog extends Model
     public function scopeLatestPublished(Builder $query): Builder
     {
         return $query->orderByDesc('published_at');
+    }
+
+    public static function getApiCacheKey(): string
+    {
+        return 'api.v1.blogs';
     }
 }

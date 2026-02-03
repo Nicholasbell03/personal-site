@@ -6,45 +6,69 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BlogResource;
 use App\Http\Resources\BlogSummaryResource;
 use App\Models\Blog;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class BlogController extends Controller
 {
-    public function index(): AnonymousResourceCollection
-    {
-        $blogs = Blog::query()
-            ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
-            ->published()
-            ->latestPublished()
-            ->paginate(10);
+    private const CACHE_TTL = 60 * 60 * 24; // 24 hours
 
-        return BlogSummaryResource::collection($blogs);
+    public function index(Request $request): JsonResponse
+    {
+        $page = $request->integer('page', 1);
+        $cacheKey = Blog::getApiCacheKey().".index.{$page}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            $blogs = Blog::query()
+                ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
+                ->published()
+                ->latestPublished()
+                ->paginate(10);
+
+            return BlogSummaryResource::collection($blogs)->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
-    public function featured(): AnonymousResourceCollection
+    public function featured(): JsonResponse
     {
-        $blogs = Blog::query()
-            ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
-            ->published()
-            ->latestPublished()
-            ->limit(3)
-            ->get();
+        $cacheKey = Blog::getApiCacheKey().'.featured';
 
-        return BlogSummaryResource::collection($blogs);
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
+            $blogs = Blog::query()
+                ->select(['id', 'title', 'slug', 'excerpt', 'featured_image', 'status', 'published_at', 'read_time'])
+                ->published()
+                ->latestPublished()
+                ->limit(3)
+                ->get();
+
+            return BlogSummaryResource::collection($blogs)->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
-    public function show(string $slug): BlogResource
+    public function show(string $slug): JsonResponse
     {
-        $blog = Blog::query()
-            ->published()
-            ->where('slug', $slug)
-            ->firstOrFail();
+        $cacheKey = Blog::getApiCacheKey().".show.{$slug}";
 
-        return new BlogResource($blog);
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug) {
+            $blog = Blog::query()
+                ->published()
+                ->where('slug', $slug)
+                ->firstOrFail();
+
+            return (new BlogResource($blog))->response()->getData(true);
+        });
+
+        return response()->json($data);
     }
 
     public function preview(string $slug): BlogResource
     {
+        // Preview is not cached - it's for unpublished content
         $blog = Blog::query()
             ->where('slug', $slug)
             ->firstOrFail();

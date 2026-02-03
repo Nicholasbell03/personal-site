@@ -16,3 +16,13 @@ Route::get('/health', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 });
+
+Route::get('/warm-cache', function () {
+    Illuminate\Support\Facades\Artisan::call('api:warm-cache');
+
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Cache warmed',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
