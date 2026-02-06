@@ -36,16 +36,12 @@ it('can render create page', function () {
 });
 
 it('can create share', function () {
-    $newData = [
-        'url' => 'https://example.com/article',
-        'source_type' => SourceType::Webpage->value,
-        'title' => 'Test Share',
-        'slug' => 'test-share',
-    ];
-
     Livewire::actingAs($this->user)
         ->test(CreateShare::class)
-        ->fillForm($newData)
+        ->set('data.url', 'https://example.com/article')
+        ->set('data.source_type', SourceType::Webpage->value)
+        ->set('data.title', 'Test Share')
+        ->set('data.slug', 'test-share')
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -78,15 +74,10 @@ it('can render edit page', function () {
 it('can update share', function () {
     $share = Share::factory()->create(['slug' => 'original-slug']);
 
-    $updatedData = [
-        'url' => 'https://example.com/updated',
-        'title' => 'Updated Title',
-        'slug' => 'updated-slug',
-    ];
-
     Livewire::actingAs($this->user)
         ->test(EditShare::class, ['record' => $share->id])
-        ->fillForm($updatedData)
+        ->set('data.url', 'https://example.com/updated')
+        ->set('data.title', 'Updated Title')
         ->call('save')
         ->assertHasNoFormErrors();
 
