@@ -15,7 +15,7 @@ class ShareInfolist
                 Section::make('Content')
                     ->schema([
                         TextEntry::make('url')
-                            ->url()
+                            ->url(fn ($record): string => $record->url)
                             ->openUrlInNewTab()
                             ->columnSpanFull(),
                         TextEntry::make('title')

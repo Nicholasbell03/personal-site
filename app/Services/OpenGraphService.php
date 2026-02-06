@@ -17,11 +17,25 @@ class OpenGraphService
         $sourceType = $this->detectSourceType($url);
         $embedData = $this->extractEmbedData($url, $sourceType);
 
+        if (! $this->isSafeUrl($url)) {
+            return [
+                'title' => null,
+                'description' => null,
+                'image' => null,
+                'site_name' => null,
+                'source_type' => $sourceType,
+                'embed_data' => $embedData,
+                'og_raw' => null,
+            ];
+        }
+
         try {
             $response = Http::timeout(10)
+                ->maxRedirects(3)
                 ->withHeaders([
                     'User-Agent' => 'NickBellBot/1.0 (+https://nickbell.dev)',
                 ])
+                ->withOptions(['stream' => true])
                 ->get($url);
 
             if (! $response->successful()) {
@@ -134,22 +148,62 @@ class OpenGraphService
     }
 
     /**
+     * Validate that a URL is safe to fetch (prevents SSRF).
+     */
+    private function isSafeUrl(string $url): bool
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        if (! in_array(strtolower($scheme ?? ''), ['http', 'https'])) {
+            return false;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! $host) {
+            return false;
+        }
+
+        $ips = gethostbynamel($host);
+
+        if ($ips === false) {
+            return false;
+        }
+
+        foreach ($ips as $ip) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @return array<string, string>
      */
     private function parseOgTags(string $html): array
     {
         $tags = [];
 
-        libxml_use_internal_errors(true);
-        $dom = new \DOMDocument;
-        $dom->loadHTML($html, LIBXML_NOWARNING | LIBXML_NOERROR);
-        libxml_clear_errors();
+        $previousLibxmlState = libxml_use_internal_errors(true);
+
+        try {
+            $dom = new \DOMDocument;
+            $dom->loadHTML($html, LIBXML_NOWARNING | LIBXML_NOERROR);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousLibxmlState);
+        }
 
         $xpath = new \DOMXPath($dom);
         $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
 
         if ($metas) {
             foreach ($metas as $meta) {
+                if (! $meta instanceof \DOMElement) {
+                    continue;
+                }
                 $property = $meta->getAttribute('property');
                 $content = $meta->getAttribute('content');
                 if ($property && $content) {
