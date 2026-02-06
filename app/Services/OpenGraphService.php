@@ -150,6 +150,9 @@ class OpenGraphService
 
         if ($metas) {
             foreach ($metas as $meta) {
+                if (! $meta instanceof \DOMElement) {
+                    continue;
+                }
                 $property = $meta->getAttribute('property');
                 $content = $meta->getAttribute('content');
                 if ($property && $content) {
