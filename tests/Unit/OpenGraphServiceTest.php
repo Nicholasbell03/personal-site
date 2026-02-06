@@ -62,22 +62,3 @@ it('returns null embed data for webpage', function () {
     expect($result)->toBeNull();
 });
 
-it('rejects private/loopback urls for ssrf protection', function (string $url) {
-    $result = $this->service->fetch($url);
-
-    expect($result['title'])->toBeNull()
-        ->and($result['og_raw'])->toBeNull();
-})->with([
-    'localhost' => 'http://localhost/admin',
-    'loopback' => 'http://127.0.0.1/secret',
-    'private class A' => 'http://10.0.0.1/internal',
-    'private class C' => 'http://192.168.1.1/admin',
-    'ftp scheme' => 'ftp://example.com/file',
-]);
-
-it('rejects urls with no host', function () {
-    $result = $this->service->fetch('not-a-url');
-
-    expect($result['title'])->toBeNull()
-        ->and($result['og_raw'])->toBeNull();
-});

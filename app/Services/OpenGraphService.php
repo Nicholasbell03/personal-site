@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SourceType;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OpenGraphService
 {
@@ -18,6 +19,12 @@ class OpenGraphService
         $embedData = $this->extractEmbedData($url, $sourceType);
 
         if (! $this->isSafeUrl($url)) {
+            Log::warning('OpenGraph fetch skipped: URL failed safety check', [
+                'url' => $url,
+                'host' => parse_url($url, PHP_URL_HOST),
+                'resolved_ips' => gethostbynamel(parse_url($url, PHP_URL_HOST) ?? '') ?: null,
+            ]);
+
             return [
                 'title' => null,
                 'description' => null,
@@ -39,6 +46,11 @@ class OpenGraphService
                 ->get($url);
 
             if (! $response->successful()) {
+                Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                ]);
+
                 return [
                     'title' => null,
                     'description' => null,
@@ -61,7 +73,13 @@ class OpenGraphService
                 'embed_data' => $embedData,
                 'og_raw' => $ogTags ?: null,
             ];
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            Log::error('OpenGraph fetch exception', [
+                'url' => $url,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return [
                 'title' => null,
                 'description' => null,
