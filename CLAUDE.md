@@ -32,6 +32,18 @@ docker compose exec app php artisan <command>
 
 ---
 
+## Error Handling & Logging
+
+**Never silently swallow exceptions.** Every `catch` block must log meaningful context for debugging. This is critical because the app runs on Render where silent failures are invisible.
+
+- Always `Log::error()` in catch blocks with the exception message, relevant context (URL, ID, etc.), and trace.
+- When returning early due to a failed check (validation, safety, etc.), `Log::warning()` with enough context to understand *why* it failed.
+- When an external HTTP call returns a non-successful status, `Log::warning()` with the URL and status code.
+- Never use `catch (\Throwable)` — always capture the variable: `catch (\Throwable $e)`.
+- Graceful degradation is fine (returning null/defaults), but it must be **observable** in logs.
+
+---
+
 ## Related Frontend Repository
 
 This Laravel backend serves as the API for a React frontend located at `../nickbell-frontend`.
