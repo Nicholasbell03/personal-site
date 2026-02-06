@@ -30,7 +30,7 @@ class ShareForm
                             ->suffixAction(
                                 \Filament\Actions\Action::make('fetchMetadata')
                                     ->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowPath)
-                                    ->action(function (Set $set, ?string $state) {
+                                    ->action(function (Set $set, ?string $state, $record) {
                                         if (! $state) {
                                             return;
                                         }
@@ -40,7 +40,9 @@ class ShareForm
 
                                         if ($data['title']) {
                                             $set('title', $data['title']);
-                                            $set('slug', Str::slug($data['title']));
+                                            if (! $record) {
+                                                $set('slug', Str::slug($data['title']));
+                                            }
                                         }
                                         if ($data['description']) {
                                             $set('description', $data['description']);
