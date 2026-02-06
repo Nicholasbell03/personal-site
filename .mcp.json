@@ -1,17 +1,20 @@
 {
-    "mcpServers": {
-        "laravel-boost": {
-            "command": "docker",
-            "args": [
-                "compose",
-                "exec",
-                "-T",
-                "app",
-                "php",
-                "artisan",
-                "boost:mcp"
-            ],
-            "cwd": "/Users/nickbell/Dev Pvt/personal-site"
-        }
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "docker",
+      "args": [
+        "compose",
+        "exec",
+        "-T",
+        "app",
+        "php",
+        "artisan",
+        "boost:mcp"
+      ]
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp"
     }
+  }
 }
