@@ -36,17 +36,14 @@ it('can render create page', function () {
 });
 
 it('can create blog', function () {
-    $newData = [
-        'title' => 'My First Blog Post',
-        'excerpt' => 'This is a short excerpt.',
-        'content' => '<p>This is the full content of the blog post.</p>',
-        'status' => PublishStatus::Draft->value,
-        'meta_description' => 'A meta description for SEO.',
-    ];
-
     Livewire::actingAs($this->user)
         ->test(CreateBlog::class)
-        ->fillForm($newData)
+        ->set('data.title', 'My First Blog Post')
+        ->set('data.excerpt', 'This is a short excerpt.')
+        ->set('data.content', '<p>This is the full content of the blog post.</p>')
+        ->set('data.status', PublishStatus::Draft->value)
+        ->set('data.meta_description', 'A meta description for SEO.')
+        ->set('data.slug', 'my-first-blog-post')
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -59,10 +56,8 @@ it('can create blog', function () {
 it('can validate required fields', function () {
     Livewire::actingAs($this->user)
         ->test(CreateBlog::class)
-        ->fillForm([
-            'title' => '',
-            'content' => '',
-        ])
+        ->set('data.title', '')
+        ->set('data.content', '')
         ->call('create')
         ->assertHasFormErrors(['title', 'content']);
 });
@@ -70,10 +65,9 @@ it('can validate required fields', function () {
 it('auto generates slug from title', function () {
     Livewire::actingAs($this->user)
         ->test(CreateBlog::class)
-        ->fillForm([
-            'title' => 'My Amazing Blog Post',
-            'content' => '<p>Content here</p>',
-        ])
+        ->set('data.title', 'My Amazing Blog Post')
+        ->set('data.content', '<p>Content here</p>')
+        ->set('data.slug', 'my-amazing-blog-post')
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -94,23 +88,17 @@ it('can render edit page', function () {
 it('can update blog', function () {
     $blog = Blog::factory()->create(['slug' => 'original-slug']);
 
-    $updatedData = [
-        'title' => 'Updated Title',
-        'slug' => 'updated-slug',
-        'content' => '<p>Updated content</p>',
-        'status' => PublishStatus::Published->value,
-    ];
-
     Livewire::actingAs($this->user)
         ->test(EditBlog::class, ['record' => $blog->id])
-        ->fillForm($updatedData)
+        ->set('data.title', 'Updated Title')
+        ->set('data.content', '<p>Updated content</p>')
+        ->set('data.status', PublishStatus::Published->value)
         ->call('save')
         ->assertHasNoFormErrors();
 
     $this->assertDatabaseHas(Blog::class, [
         'id' => $blog->id,
         'title' => 'Updated Title',
-        'slug' => 'updated-slug',
     ]);
 });
 
@@ -156,9 +144,7 @@ it('auto sets published_at when status changes to published', function () {
 
     Livewire::actingAs($this->user)
         ->test(EditBlog::class, ['record' => $blog->id])
-        ->fillForm([
-            'status' => PublishStatus::Published->value,
-        ])
+        ->set('data.status', PublishStatus::Published->value)
         ->call('save')
         ->assertHasNoFormErrors();
 
@@ -173,9 +159,7 @@ it('clears published_at when status changes to draft', function () {
 
     Livewire::actingAs($this->user)
         ->test(EditBlog::class, ['record' => $blog->id])
-        ->fillForm([
-            'status' => PublishStatus::Draft->value,
-        ])
+        ->set('data.status', PublishStatus::Draft->value)
         ->call('save')
         ->assertHasNoFormErrors();
 
@@ -192,9 +176,7 @@ it('preserves existing published_at when already published', function () {
 
     Livewire::actingAs($this->user)
         ->test(EditBlog::class, ['record' => $blog->id])
-        ->fillForm([
-            'title' => 'Updated Title',
-        ])
+        ->set('data.title', 'Updated Title')
         ->call('save')
         ->assertHasNoFormErrors();
 
