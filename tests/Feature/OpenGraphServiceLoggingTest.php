@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\SourceType;
+use App\Models\Share;
 use App\Services\OpenGraphService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -68,4 +70,93 @@ it('logs error on exception during fetch', function () {
     Log::shouldHaveReceived('error')
         ->withArgs(fn (string $message) => str_contains($message, 'exception'))
         ->once();
+});
+
+it('refreshMetadata updates share model with fetched OG data', function () {
+    Http::fake([
+        'https://example.com/article' => Http::response('<html><head>
+            <meta property="og:title" content="Fresh Title">
+            <meta property="og:description" content="Fresh description">
+            <meta property="og:image" content="https://example.com/new-image.jpg">
+            <meta property="og:site_name" content="Example Site">
+        </head></html>'),
+    ]);
+
+    $share = Share::factory()->create([
+        'url' => 'https://example.com/article',
+        'title' => 'Old Title',
+        'description' => 'Old description',
+        'image_url' => null,
+        'site_name' => null,
+    ]);
+
+    $result = $this->service->refreshMetadata($share);
+
+    expect($result->title)->toBe('Fresh Title')
+        ->and($result->description)->toBe('Fresh description')
+        ->and($result->image_url)->toBe('https://example.com/new-image.jpg')
+        ->and($result->site_name)->toBe('Example Site')
+        ->and($result->source_type)->toBe(SourceType::Webpage);
+
+    $this->assertDatabaseHas(Share::class, [
+        'id' => $share->id,
+        'title' => 'Fresh Title',
+        'description' => 'Fresh description',
+        'image_url' => 'https://example.com/new-image.jpg',
+    ]);
+});
+
+it('refreshMetadata preserves existing fields when OG data returns empty strings', function () {
+    Http::fake([
+        'https://example.com/empty-og' => Http::response('<html><head>
+            <meta property="og:title" content="">
+            <meta property="og:description" content="">
+        </head></html>'),
+    ]);
+
+    $share = Share::factory()->create([
+        'url' => 'https://example.com/empty-og',
+        'title' => 'Keep This Title',
+        'description' => 'Keep this description',
+    ]);
+
+    $result = $this->service->refreshMetadata($share);
+
+    expect($result->title)->toBe('Keep This Title')
+        ->and($result->description)->toBe('Keep this description');
+});
+
+it('refreshMetadata preserves existing fields when OG data returns nulls', function () {
+    Http::fake([
+        'https://example.com/no-og' => Http::response('<html><head></head></html>'),
+    ]);
+
+    $share = Share::factory()->create([
+        'url' => 'https://example.com/no-og',
+        'title' => 'Keep This Title',
+        'description' => 'Keep this description',
+    ]);
+
+    $result = $this->service->refreshMetadata($share);
+
+    expect($result->title)->toBe('Keep This Title')
+        ->and($result->description)->toBe('Keep this description');
+});
+
+it('refreshMetadata detects source type for youtube urls', function () {
+    Http::fake([
+        'https://www.youtube.com/*' => Http::response('<html><head>
+            <meta property="og:title" content="Cool Video">
+        </head></html>'),
+    ]);
+
+    $share = Share::factory()->create([
+        'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        'source_type' => SourceType::Webpage,
+    ]);
+
+    $result = $this->service->refreshMetadata($share);
+
+    expect($result->source_type)->toBe(SourceType::Youtube)
+        ->and($result->embed_data)->toBe(['video_id' => 'dQw4w9WgXcQ']);
 });
