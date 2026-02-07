@@ -16,3 +16,6 @@ php artisan event:cache
 
 echo "Caching views..."
 php artisan view:cache
+
+echo "Publishing Log Viewer assets..."
+php artisan vendor:publish --tag=log-viewer-assets --force
