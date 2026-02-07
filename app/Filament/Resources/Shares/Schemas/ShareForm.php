@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Shares\Schemas;
 
 use App\Enums\SourceType;
-use App\Services\OpenGraphService;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -26,39 +25,7 @@ class ShareForm
                             ->required()
                             ->url()
                             ->maxLength(2048)
-                            ->columnSpanFull()
-                            ->suffixAction(
-                                \Filament\Actions\Action::make('fetchMetadata')
-                                    ->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowPath)
-                                    ->action(function (Set $set, ?string $state, $record) {
-                                        if (! $state) {
-                                            return;
-                                        }
-
-                                        $service = app(OpenGraphService::class);
-                                        $data = $service->fetch($state);
-
-                                        if ($data['title']) {
-                                            $set('title', $data['title']);
-                                            if (! $record) {
-                                                $set('slug', Str::slug($data['title']));
-                                            }
-                                        }
-                                        if ($data['description']) {
-                                            $set('description', $data['description']);
-                                        }
-                                        if ($data['image']) {
-                                            $set('image_url', $data['image']);
-                                        }
-                                        if ($data['site_name']) {
-                                            $set('site_name', $data['site_name']);
-                                        }
-
-                                        $set('source_type', $data['source_type']->value);
-                                        $set('embed_data', $data['embed_data']);
-                                        $set('og_raw', $data['og_raw']);
-                                    })
-                            ),
+                            ->columnSpanFull(),
                         Select::make('source_type')
                             ->options(SourceType::class)
                             ->default(SourceType::Webpage)

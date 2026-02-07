@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Shares\Tables;
 
 use App\Enums\SourceType;
+use App\Services\OpenGraphService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -40,6 +42,9 @@ class SharesTable
                     ->options(SourceType::class),
             ])
             ->recordActions([
+                Action::make('fetchMetadata')
+                    ->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowPath)
+                    ->action(fn ($record) => app(OpenGraphService::class)->refreshMetadata($record)),
                 ViewAction::make(),
                 EditAction::make(),
             ])

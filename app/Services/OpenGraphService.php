@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\SourceType;
+use App\Models\Share;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -90,6 +91,26 @@ class OpenGraphService
                 'og_raw' => null,
             ];
         }
+    }
+
+    /**
+     * Fetch OG metadata and update the share model directly.
+     */
+    public function refreshMetadata(Share $share): Share
+    {
+        $data = $this->fetch($share->url);
+
+        $share->update(array_filter([
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'image_url' => $data['image'],
+            'site_name' => $data['site_name'],
+            'source_type' => $data['source_type'],
+            'embed_data' => $data['embed_data'],
+            'og_raw' => $data['og_raw'],
+        ], fn ($value) => $value !== null));
+
+        return $share->refresh();
     }
 
     public function detectSourceType(string $url): SourceType
