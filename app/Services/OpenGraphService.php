@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\Log;
 
 class OpenGraphService
 {
+    /** @var list<string> */
+    public const METADATA_FIELDS = [
+        'title',
+        'description',
+        'image_url',
+        'site_name',
+        'source_type',
+        'embed_data',
+        'og_raw',
+    ];
+
     /**
      * Fetch OG metadata from a URL.
      *
@@ -108,7 +119,7 @@ class OpenGraphService
             'source_type' => $data['source_type'],
             'embed_data' => $data['embed_data'],
             'og_raw' => $data['og_raw'],
-        ], fn ($value) => $value !== null));
+        ], fn ($value) => $value !== null && $value !== ''));
 
         return $share->refresh();
     }

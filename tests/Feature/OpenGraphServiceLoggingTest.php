@@ -106,6 +106,26 @@ it('refreshMetadata updates share model with fetched OG data', function () {
     ]);
 });
 
+it('refreshMetadata preserves existing fields when OG data returns empty strings', function () {
+    Http::fake([
+        'https://example.com/empty-og' => Http::response('<html><head>
+            <meta property="og:title" content="">
+            <meta property="og:description" content="">
+        </head></html>'),
+    ]);
+
+    $share = Share::factory()->create([
+        'url' => 'https://example.com/empty-og',
+        'title' => 'Keep This Title',
+        'description' => 'Keep this description',
+    ]);
+
+    $result = $this->service->refreshMetadata($share);
+
+    expect($result->title)->toBe('Keep This Title')
+        ->and($result->description)->toBe('Keep this description');
+});
+
 it('refreshMetadata preserves existing fields when OG data returns nulls', function () {
     Http::fake([
         'https://example.com/no-og' => Http::response('<html><head></head></html>'),

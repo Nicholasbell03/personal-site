@@ -23,15 +23,7 @@ class EditShare extends EditRecord
                 ->action(function ($record, $livewire) {
                     app(OpenGraphService::class)->refreshMetadata($record);
 
-                    $livewire->refreshFormData([
-                        'title',
-                        'description',
-                        'image_url',
-                        'site_name',
-                        'source_type',
-                        'embed_data',
-                        'og_raw',
-                    ]);
+                    $livewire->refreshFormData(OpenGraphService::METADATA_FIELDS);
                 }),
         ];
     }
