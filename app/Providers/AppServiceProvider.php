@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         LogViewer::auth(function ($request) {
-            return $request->user()?->id === 1;
+            return $request->user()?->email === config('log-viewer.admin_email');
         });
     }
 }
