@@ -452,7 +452,7 @@ class OpenGraphService
             if ($descMeta && $descMeta->length > 0 && $descMeta->item(0) instanceof \DOMElement) {
                 /** @var \DOMElement $descMetaItem */
                 $descMetaItem = $descMeta->item(0);
-                $content = $descMetaItem?->getAttribute('content');
+                $content = $descMetaItem->getAttribute('content');
                 if ($content) {
                     $tags['og:description'] = $content;
                 }
