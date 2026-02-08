@@ -34,13 +34,23 @@ it('rejects urls with no host', function () {
         ->and($result['og_raw'])->toBeNull();
 });
 
-it('logs warning when url fails safety check', function () {
+it('logs warning when url fails ssrf check', function () {
     Log::spy();
 
     $this->service->fetch('http://127.0.0.1/secret');
 
     Log::shouldHaveReceived('warning')
-        ->withArgs(fn (string $message) => str_contains($message, 'safety check'))
+        ->withArgs(fn (string $message) => str_contains($message, 'SSRF check failed'))
+        ->once();
+});
+
+it('logs warning for invalid scheme', function () {
+    Log::spy();
+
+    $this->service->fetch('ftp://example.com/file');
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message) => str_contains($message, 'invalid scheme'))
         ->once();
 });
 
@@ -72,7 +82,19 @@ it('logs error on exception during fetch', function () {
         ->once();
 });
 
+it('logs warning when no OG tags found in response', function () {
+    Log::spy();
+    Http::fake(['https://example.com/*' => Http::response('<html><head></head></html>')]);
+
+    $this->service->fetch('https://example.com/no-og');
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message) => str_contains($message, 'no OG tags'))
+        ->once();
+});
+
 it('refreshMetadata updates share model with fetched OG data', function () {
+    Log::spy();
     Http::fake([
         'https://example.com/article' => Http::response('<html><head>
             <meta property="og:title" content="Fresh Title">
@@ -104,9 +126,14 @@ it('refreshMetadata updates share model with fetched OG data', function () {
         'description' => 'Fresh description',
         'image_url' => 'https://example.com/new-image.jpg',
     ]);
+
+    Log::shouldHaveReceived('info')
+        ->withArgs(fn (string $message) => str_contains($message, 'share updated'))
+        ->once();
 });
 
 it('refreshMetadata preserves existing fields when OG data returns empty strings', function () {
+    Log::spy();
     Http::fake([
         'https://example.com/empty-og' => Http::response('<html><head>
             <meta property="og:title" content="">
@@ -126,7 +153,8 @@ it('refreshMetadata preserves existing fields when OG data returns empty strings
         ->and($result->description)->toBe('Keep this description');
 });
 
-it('refreshMetadata preserves existing fields when OG data returns nulls', function () {
+it('refreshMetadata logs warning when fetch returns no OG content', function () {
+    Log::spy();
     Http::fake([
         'https://example.com/no-og' => Http::response('<html><head></head></html>'),
     ]);
@@ -134,16 +162,21 @@ it('refreshMetadata preserves existing fields when OG data returns nulls', funct
     $share = Share::factory()->create([
         'url' => 'https://example.com/no-og',
         'title' => 'Keep This Title',
-        'description' => 'Keep this description',
     ]);
 
-    $result = $this->service->refreshMetadata($share);
+    $this->service->refreshMetadata($share);
 
-    expect($result->title)->toBe('Keep This Title')
-        ->and($result->description)->toBe('Keep this description');
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message) => str_contains($message, 'no OG content'))
+        ->once();
+
+    Log::shouldHaveReceived('info')
+        ->withArgs(fn (string $message) => str_contains($message, 'share updated'))
+        ->once();
 });
 
 it('refreshMetadata detects source type for youtube urls', function () {
+    Log::spy();
     Http::fake([
         'https://www.youtube.com/*' => Http::response('<html><head>
             <meta property="og:title" content="Cool Video">

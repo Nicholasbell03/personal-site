@@ -31,12 +31,6 @@ class OpenGraphService
         $embedData = $this->extractEmbedData($url, $sourceType);
 
         if (! $this->isSafeUrl($url)) {
-            Log::warning('OpenGraph fetch skipped: URL failed safety check', [
-                'url' => $url,
-                'host' => parse_url($url, PHP_URL_HOST),
-                'resolved_ips' => gethostbynamel(parse_url($url, PHP_URL_HOST) ?? '') ?: null,
-            ]);
-
             return [
                 'title' => null,
                 'description' => null,
@@ -76,6 +70,13 @@ class OpenGraphService
 
             $ogTags = $this->parseOgTags($response->body());
 
+            if (empty($ogTags)) {
+                Log::warning('OpenGraph fetch returned no OG tags', [
+                    'url' => $url,
+                    'response_size' => strlen($response->body()),
+                ]);
+            }
+
             return [
                 'title' => $ogTags['og:title'] ?? null,
                 'description' => $ogTags['og:description'] ?? null,
@@ -111,15 +112,34 @@ class OpenGraphService
     {
         $data = $this->fetch($share->url);
 
-        $share->update(array_filter([
+        $ogContent = array_filter([
             'title' => $data['title'],
             'description' => $data['description'],
             'image_url' => $data['image'],
             'site_name' => $data['site_name'],
+            'og_raw' => $data['og_raw'],
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $attributes = array_filter([
+            ...$ogContent,
             'source_type' => $data['source_type'],
             'embed_data' => $data['embed_data'],
-            'og_raw' => $data['og_raw'],
-        ], fn ($value) => $value !== null && $value !== ''));
+        ], fn ($value) => $value !== null && $value !== '');
+
+        if (empty($ogContent)) {
+            Log::warning('OpenGraph refreshMetadata: fetch returned no OG content', [
+                'share_id' => $share->id,
+                'url' => $share->url,
+            ]);
+        }
+
+        $share->update($attributes);
+
+        Log::info('OpenGraph refreshMetadata: share updated', [
+            'share_id' => $share->id,
+            'url' => $share->url,
+            'updated_fields' => array_keys($attributes),
+        ]);
 
         return $share->refresh();
     }
@@ -205,23 +225,49 @@ class OpenGraphService
         $scheme = parse_url($url, PHP_URL_SCHEME);
 
         if (! in_array(strtolower($scheme ?? ''), ['http', 'https'])) {
+            Log::warning('OpenGraph SSRF check failed: invalid scheme', [
+                'url' => $url,
+                'scheme' => $scheme,
+            ]);
+
             return false;
         }
 
         $host = parse_url($url, PHP_URL_HOST);
 
         if (! $host) {
+            Log::warning('OpenGraph SSRF check failed: no host', [
+                'url' => $url,
+            ]);
+
             return false;
         }
 
-        $ips = gethostbynamel($host);
+        $records = @dns_get_record($host, DNS_A | DNS_AAAA);
 
-        if ($ips === false) {
+        if ($records === false || empty($records)) {
+            Log::warning('OpenGraph SSRF check failed: DNS resolution returned no records', [
+                'url' => $url,
+                'host' => $host,
+            ]);
+
             return false;
         }
 
-        foreach ($ips as $ip) {
+        foreach ($records as $record) {
+            $ip = $record['ip'] ?? $record['ipv6'] ?? null;
+
+            if (! $ip) {
+                continue;
+            }
+
             if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                Log::warning('OpenGraph SSRF check failed: resolved to private/reserved IP', [
+                    'url' => $url,
+                    'host' => $host,
+                    'ip' => $ip,
+                ]);
+
                 return false;
             }
         }
