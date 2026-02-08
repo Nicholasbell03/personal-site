@@ -67,7 +67,7 @@ class OpenGraphService
             ...$ogContent,
             'source_type' => $data['source_type'],
             'embed_data' => $data['embed_data'],
-        ], fn ($value) => $value !== null && $value !== '');
+        ], fn ($value) => $value !== null);
 
         if (empty($ogContent)) {
             Log::warning('OpenGraph refreshMetadata: fetch returned no OG content', [
