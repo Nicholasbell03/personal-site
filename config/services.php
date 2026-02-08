@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'google' => [
+        'youtube_api_key' => env('GOOGLE_YOUTUBE_API_KEY'),
+    ],
+
 ];

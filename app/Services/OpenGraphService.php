@@ -30,6 +30,19 @@ class OpenGraphService
         $sourceType = $this->detectSourceType($url);
         $embedData = $this->extractEmbedData($url, $sourceType);
 
+        if ($sourceType === SourceType::Youtube && isset($embedData['video_id'])) {
+            $youtubeData = $this->fetchYoutubeMetadata($embedData['video_id']);
+
+            if ($youtubeData !== null) {
+                return [
+                    ...$youtubeData,
+                    'source_type' => $sourceType,
+                    'embed_data' => $embedData,
+                    'og_raw' => null,
+                ];
+            }
+        }
+
         if (! $this->isSafeUrl($url)) {
             return [
                 'title' => null,
@@ -46,7 +59,9 @@ class OpenGraphService
             $response = Http::timeout(10)
                 ->maxRedirects(3)
                 ->withHeaders([
-                    'User-Agent' => 'NickBellBot/1.0 (+https://nickbell.dev)',
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
+                    'Accept' => 'text/html',
+                    'Accept-Language' => 'en-US,en;q=0.9',
                 ])
                 ->get($url);
 
@@ -217,6 +232,78 @@ class OpenGraphService
     }
 
     /**
+     * Fetch video metadata from the YouTube Data API v3.
+     *
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: string}|null
+     */
+    private function fetchYoutubeMetadata(string $videoId): ?array
+    {
+        $apiKey = config('services.google.youtube_api_key');
+
+        if (empty($apiKey)) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->get('https://www.googleapis.com/youtube/v3/videos', [
+                    'part' => 'snippet',
+                    'id' => $videoId,
+                    'key' => $apiKey,
+                ]);
+
+            if (! $response->successful()) {
+                Log::warning('YouTube API request failed', [
+                    'video_id' => $videoId,
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $items = $response->json('items', []);
+
+            if (empty($items)) {
+                Log::warning('YouTube API returned no items for video', [
+                    'video_id' => $videoId,
+                ]);
+
+                return null;
+            }
+
+            $snippet = $items[0]['snippet'] ?? [];
+            $thumbnails = $snippet['thumbnails'] ?? [];
+
+            $thumbnail = $thumbnails['maxres']
+                ?? $thumbnails['standard']
+                ?? $thumbnails['high']
+                ?? $thumbnails['medium']
+                ?? $thumbnails['default']
+                ?? null;
+
+            Log::info('YouTube API metadata fetched successfully', [
+                'video_id' => $videoId,
+                'title' => $snippet['title'] ?? null,
+            ]);
+
+            return [
+                'title' => $snippet['title'] ?? null,
+                'description' => $snippet['description'] ?? null,
+                'image' => $thumbnail['url'] ?? null,
+                'site_name' => 'YouTube',
+            ];
+        } catch (\Throwable $e) {
+            Log::error('YouTube API exception', [
+                'video_id' => $videoId,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Validate that a URL is safe to fetch (prevents SSRF).
      */
     private function isSafeUrl(string $url): bool
@@ -292,8 +379,9 @@ class OpenGraphService
         }
 
         $xpath = new \DOMXPath($dom);
-        $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
 
+        // Check property attribute (standard OG)
+        $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
         if ($metas) {
             foreach ($metas as $meta) {
                 if (! $meta instanceof \DOMElement) {
@@ -303,6 +391,41 @@ class OpenGraphService
                 $content = $meta->getAttribute('content');
                 if ($property && $content) {
                     $tags[$property] = $content;
+                }
+            }
+        }
+
+        // Fallback: check name attribute (some sites use name instead of property)
+        if (empty($tags)) {
+            $metas = $xpath->query('//meta[starts-with(@name, "og:")]');
+            if ($metas) {
+                foreach ($metas as $meta) {
+                    if (! $meta instanceof \DOMElement) {
+                        continue;
+                    }
+                    $name = $meta->getAttribute('name');
+                    $content = $meta->getAttribute('content');
+                    if ($name && $content) {
+                        $tags[$name] = $content;
+                    }
+                }
+            }
+        }
+
+        // Fallback: standard meta tags and <title>
+        if (empty($tags['og:title'])) {
+            $titleNode = $xpath->query('//title');
+            if ($titleNode && $titleNode->length > 0) {
+                $tags['og:title'] = trim($titleNode->item(0)->textContent);
+            }
+        }
+
+        if (empty($tags['og:description'])) {
+            $descMeta = $xpath->query('//meta[@name="description"]');
+            if ($descMeta && $descMeta->length > 0 && $descMeta->item(0) instanceof \DOMElement) {
+                $content = $descMeta->item(0)->getAttribute('content');
+                if ($content) {
+                    $tags['og:description'] = $content;
                 }
             }
         }
