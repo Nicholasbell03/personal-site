@@ -20,6 +20,8 @@ class OpenGraphService
         'og_raw',
     ];
 
+    // ── Public API ───────────────────────────────────────────────
+
     /**
      * Fetch OG metadata from a URL.
      *
@@ -43,80 +45,7 @@ class OpenGraphService
             }
         }
 
-        if (! $this->isSafeUrl($url)) {
-            return [
-                'title' => null,
-                'description' => null,
-                'image' => null,
-                'site_name' => null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => null,
-            ];
-        }
-
-        try {
-            $response = Http::timeout(10)
-                ->maxRedirects(3)
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
-                    'Accept' => 'text/html',
-                    'Accept-Language' => 'en-US,en;q=0.9',
-                ])
-                ->get($url);
-
-            if (! $response->successful()) {
-                Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
-                    'url' => $url,
-                    'status' => $response->status(),
-                ]);
-
-                return [
-                    'title' => null,
-                    'description' => null,
-                    'image' => null,
-                    'site_name' => null,
-                    'source_type' => $sourceType,
-                    'embed_data' => $embedData,
-                    'og_raw' => null,
-                ];
-            }
-
-            $ogTags = $this->parseOgTags($response->body());
-
-            if (empty($ogTags)) {
-                Log::warning('OpenGraph fetch returned no OG tags', [
-                    'url' => $url,
-                    'response_size' => strlen($response->body()),
-                ]);
-            }
-
-            return [
-                'title' => $ogTags['og:title'] ?? null,
-                'description' => $ogTags['og:description'] ?? null,
-                'image' => $ogTags['og:image'] ?? null,
-                'site_name' => $ogTags['og:site_name'] ?? null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => $ogTags ?: null,
-            ];
-        } catch (\Throwable $e) {
-            Log::error('OpenGraph fetch exception', [
-                'url' => $url,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'title' => null,
-                'description' => null,
-                'image' => null,
-                'site_name' => null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => null,
-            ];
-        }
+        return $this->fetchViaOgScraping($url, $sourceType, $embedData);
     }
 
     /**
@@ -191,45 +120,7 @@ class OpenGraphService
         };
     }
 
-    /**
-     * @return array{video_id: string}|null
-     */
-    private function extractYoutubeId(string $url): ?array
-    {
-        // youtu.be/VIDEO_ID
-        if (preg_match('#youtu\.be/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
-            return ['video_id' => $matches[1]];
-        }
-
-        // youtube.com/watch?v=VIDEO_ID
-        if (preg_match('#[?&]v=([a-zA-Z0-9_-]{11})#', $url, $matches)) {
-            return ['video_id' => $matches[1]];
-        }
-
-        // youtube.com/embed/VIDEO_ID
-        if (preg_match('#/embed/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
-            return ['video_id' => $matches[1]];
-        }
-
-        // youtube.com/shorts/VIDEO_ID
-        if (preg_match('#/shorts/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
-            return ['video_id' => $matches[1]];
-        }
-
-        return null;
-    }
-
-    /**
-     * @return array{tweet_id: string}|null
-     */
-    private function extractTweetId(string $url): ?array
-    {
-        if (preg_match('#/status/(\d+)#', $url, $matches)) {
-            return ['tweet_id' => $matches[1]];
-        }
-
-        return null;
-    }
+    // ── Fetch strategies (private) ──────────────────────────────
 
     /**
      * Fetch video metadata from the YouTube Data API v3.
@@ -304,6 +195,110 @@ class OpenGraphService
     }
 
     /**
+     * Fetch metadata by scraping OG tags from the URL's HTML.
+     *
+     * @param  array<string, string>|null  $embedData
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     */
+    private function fetchViaOgScraping(string $url, SourceType $sourceType, ?array $embedData): array
+    {
+        if (! $this->isSafeUrl($url)) {
+            return $this->emptyResult($sourceType, $embedData);
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->maxRedirects(3)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
+                    'Accept' => 'text/html',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                ])
+                ->get($url);
+
+            if (! $response->successful()) {
+                Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                ]);
+
+                return $this->emptyResult($sourceType, $embedData);
+            }
+
+            $ogTags = $this->parseOgTags($response->body());
+
+            if (empty($ogTags)) {
+                Log::warning('OpenGraph fetch returned no OG tags', [
+                    'url' => $url,
+                    'response_size' => strlen($response->body()),
+                ]);
+            }
+
+            return [
+                'title' => $ogTags['og:title'] ?? null,
+                'description' => $ogTags['og:description'] ?? null,
+                'image' => $ogTags['og:image'] ?? null,
+                'site_name' => $ogTags['og:site_name'] ?? null,
+                'source_type' => $sourceType,
+                'embed_data' => $embedData,
+                'og_raw' => $ogTags ?: null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('OpenGraph fetch exception', [
+                'url' => $url,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->emptyResult($sourceType, $embedData);
+        }
+    }
+
+    // ── URL analysis (private) ──────────────────────────────────
+
+    /**
+     * @return array{video_id: string}|null
+     */
+    private function extractYoutubeId(string $url): ?array
+    {
+        // youtu.be/VIDEO_ID
+        if (preg_match('#youtu\.be/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
+            return ['video_id' => $matches[1]];
+        }
+
+        // youtube.com/watch?v=VIDEO_ID
+        if (preg_match('#[?&]v=([a-zA-Z0-9_-]{11})#', $url, $matches)) {
+            return ['video_id' => $matches[1]];
+        }
+
+        // youtube.com/embed/VIDEO_ID
+        if (preg_match('#/embed/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
+            return ['video_id' => $matches[1]];
+        }
+
+        // youtube.com/shorts/VIDEO_ID
+        if (preg_match('#/shorts/([a-zA-Z0-9_-]{11})#', $url, $matches)) {
+            return ['video_id' => $matches[1]];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{tweet_id: string}|null
+     */
+    private function extractTweetId(string $url): ?array
+    {
+        if (preg_match('#/status/(\d+)#', $url, $matches)) {
+            return ['tweet_id' => $matches[1]];
+        }
+
+        return null;
+    }
+
+    // ── Security (private) ──────────────────────────────────────
+
+    /**
      * Validate that a URL is safe to fetch (prevents SSRF).
      */
     private function isSafeUrl(string $url): bool
@@ -360,6 +355,8 @@ class OpenGraphService
 
         return true;
     }
+
+    // ── HTML parsing (private) ──────────────────────────────────
 
     /**
      * @return array<string, string>
@@ -431,5 +428,26 @@ class OpenGraphService
         }
 
         return $tags;
+    }
+
+    // ── Helpers (private) ───────────────────────────────────────
+
+    /**
+     * Build a null-result array preserving source type and embed data.
+     *
+     * @param  array<string, string>|null  $embedData
+     * @return array{title: null, description: null, image: null, site_name: null, source_type: SourceType, embed_data: ?array<string, string>, og_raw: null}
+     */
+    private function emptyResult(SourceType $sourceType, ?array $embedData): array
+    {
+        return [
+            'title' => null,
+            'description' => null,
+            'image' => null,
+            'site_name' => null,
+            'source_type' => $sourceType,
+            'embed_data' => $embedData,
+            'og_raw' => null,
+        ];
     }
 }
