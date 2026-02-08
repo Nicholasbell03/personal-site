@@ -48,7 +48,6 @@ class OpenGraphService
                 ->withHeaders([
                     'User-Agent' => 'NickBellBot/1.0 (+https://nickbell.dev)',
                 ])
-                ->withOptions(['stream' => true])
                 ->get($url);
 
             if (! $response->successful()) {
