@@ -136,6 +136,7 @@ class OpenGraphService
         }
 
         try {
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::timeout(10)
                 ->get('https://www.googleapis.com/youtube/v3/videos', [
                     'part' => 'snippet',
@@ -207,6 +208,7 @@ class OpenGraphService
         }
 
         try {
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::timeout(10)
                 ->maxRedirects(3)
                 ->withHeaders([
@@ -420,7 +422,9 @@ class OpenGraphService
         if (empty($tags['og:description'])) {
             $descMeta = $xpath->query('//meta[@name="description"]');
             if ($descMeta && $descMeta->length > 0 && $descMeta->item(0) instanceof \DOMElement) {
-                $content = $descMeta->item(0)->getAttribute('content');
+                /** @var \DOMElement $descMetaItem */
+                $descMetaItem = $descMeta->item(0);
+                $content = $descMetaItem?->getAttribute('content');
                 if ($content) {
                     $tags['og:description'] = $content;
                 }
