@@ -76,6 +76,7 @@ class ShareController extends Controller
             'description' => $validated['description'] ?? $ogData['description'],
             'image_url' => $ogData['image'],
             'site_name' => $ogData['site_name'],
+            'author' => $ogData['author'],
             'commentary' => $validated['commentary'] ?? null,
             'embed_data' => $ogData['embed_data'],
             'og_raw' => $ogData['og_raw'],

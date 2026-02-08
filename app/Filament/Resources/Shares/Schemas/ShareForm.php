@@ -52,6 +52,8 @@ class ShareForm
                             ->columnSpanFull(),
                         TextInput::make('site_name')
                             ->nullable(),
+                        TextInput::make('author')
+                            ->nullable(),
                         RichEditor::make('commentary')
                             ->nullable()
                             ->extraInputAttributes(['style' => 'min-height: 300px;'])

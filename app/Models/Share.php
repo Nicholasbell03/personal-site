@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $description
  * @property string|null $image_url
  * @property string|null $site_name
+ * @property string|null $author
  * @property string|null $commentary
  * @property array<string, mixed>|null $embed_data
  * @property array<string, mixed>|null $og_raw
@@ -49,6 +50,7 @@ class Share extends Model
         'description',
         'image_url',
         'site_name',
+        'author',
         'commentary',
         'embed_data',
         'og_raw',
