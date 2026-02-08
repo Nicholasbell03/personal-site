@@ -20,6 +20,8 @@ class OpenGraphService
         'og_raw',
     ];
 
+    // ── Public API ───────────────────────────────────────────────
+
     /**
      * Fetch OG metadata from a URL.
      *
@@ -30,78 +32,20 @@ class OpenGraphService
         $sourceType = $this->detectSourceType($url);
         $embedData = $this->extractEmbedData($url, $sourceType);
 
-        if (! $this->isSafeUrl($url)) {
-            return [
-                'title' => null,
-                'description' => null,
-                'image' => null,
-                'site_name' => null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => null,
-            ];
-        }
+        if ($sourceType === SourceType::Youtube && isset($embedData['video_id'])) {
+            $youtubeData = $this->fetchYoutubeMetadata($embedData['video_id']);
 
-        try {
-            $response = Http::timeout(10)
-                ->maxRedirects(3)
-                ->withHeaders([
-                    'User-Agent' => 'NickBellBot/1.0 (+https://nickbell.dev)',
-                ])
-                ->get($url);
-
-            if (! $response->successful()) {
-                Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
-                    'url' => $url,
-                    'status' => $response->status(),
-                ]);
-
+            if ($youtubeData !== null) {
                 return [
-                    'title' => null,
-                    'description' => null,
-                    'image' => null,
-                    'site_name' => null,
+                    ...$youtubeData,
                     'source_type' => $sourceType,
                     'embed_data' => $embedData,
                     'og_raw' => null,
                 ];
             }
-
-            $ogTags = $this->parseOgTags($response->body());
-
-            if (empty($ogTags)) {
-                Log::warning('OpenGraph fetch returned no OG tags', [
-                    'url' => $url,
-                    'response_size' => strlen($response->body()),
-                ]);
-            }
-
-            return [
-                'title' => $ogTags['og:title'] ?? null,
-                'description' => $ogTags['og:description'] ?? null,
-                'image' => $ogTags['og:image'] ?? null,
-                'site_name' => $ogTags['og:site_name'] ?? null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => $ogTags ?: null,
-            ];
-        } catch (\Throwable $e) {
-            Log::error('OpenGraph fetch exception', [
-                'url' => $url,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'title' => null,
-                'description' => null,
-                'image' => null,
-                'site_name' => null,
-                'source_type' => $sourceType,
-                'embed_data' => $embedData,
-                'og_raw' => null,
-            ];
         }
+
+        return $this->fetchViaOgScraping($url, $sourceType, $embedData);
     }
 
     /**
@@ -123,7 +67,7 @@ class OpenGraphService
             ...$ogContent,
             'source_type' => $data['source_type'],
             'embed_data' => $data['embed_data'],
-        ], fn ($value) => $value !== null && $value !== '');
+        ], fn ($value) => $value !== null);
 
         if (empty($ogContent)) {
             Log::warning('OpenGraph refreshMetadata: fetch returned no OG content', [
@@ -176,6 +120,142 @@ class OpenGraphService
         };
     }
 
+    // ── Fetch strategies (private) ──────────────────────────────
+
+    /**
+     * Fetch video metadata from the YouTube Data API v3.
+     *
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: string}|null
+     */
+    private function fetchYoutubeMetadata(string $videoId): ?array
+    {
+        $apiKey = config('services.google.youtube_api_key');
+
+        if (empty($apiKey)) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->get('https://www.googleapis.com/youtube/v3/videos', [
+                    'part' => 'snippet',
+                    'id' => $videoId,
+                    'key' => $apiKey,
+                ]);
+
+            if (! $response->successful()) {
+                Log::warning('YouTube API request failed', [
+                    'video_id' => $videoId,
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $items = $response->json('items', []);
+
+            if (empty($items)) {
+                Log::warning('YouTube API returned no items for video', [
+                    'video_id' => $videoId,
+                ]);
+
+                return null;
+            }
+
+            $snippet = $items[0]['snippet'] ?? [];
+            $thumbnails = $snippet['thumbnails'] ?? [];
+
+            $thumbnail = $thumbnails['maxres']
+                ?? $thumbnails['standard']
+                ?? $thumbnails['high']
+                ?? $thumbnails['medium']
+                ?? $thumbnails['default']
+                ?? null;
+
+            Log::info('YouTube API metadata fetched successfully', [
+                'video_id' => $videoId,
+                'title' => $snippet['title'] ?? null,
+            ]);
+
+            return [
+                'title' => $snippet['title'] ?? null,
+                'description' => $snippet['description'] ?? null,
+                'image' => $thumbnail['url'] ?? null,
+                'site_name' => 'YouTube',
+            ];
+        } catch (\Throwable $e) {
+            Log::error('YouTube API exception', [
+                'video_id' => $videoId,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Fetch metadata by scraping OG tags from the URL's HTML.
+     *
+     * @param  array<string, string>|null  $embedData
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     */
+    private function fetchViaOgScraping(string $url, SourceType $sourceType, ?array $embedData): array
+    {
+        if (! $this->isSafeUrl($url)) {
+            return $this->emptyResult($sourceType, $embedData);
+        }
+
+        try {
+            $response = Http::timeout(10)
+                ->maxRedirects(3)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
+                    'Accept' => 'text/html',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                ])
+                ->get($url);
+
+            if (! $response->successful()) {
+                Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                ]);
+
+                return $this->emptyResult($sourceType, $embedData);
+            }
+
+            $ogTags = $this->parseOgTags($response->body());
+
+            if (empty($ogTags)) {
+                Log::warning('OpenGraph fetch returned no OG tags', [
+                    'url' => $url,
+                    'response_size' => strlen($response->body()),
+                ]);
+            }
+
+            return [
+                'title' => $ogTags['og:title'] ?? null,
+                'description' => $ogTags['og:description'] ?? null,
+                'image' => $ogTags['og:image'] ?? null,
+                'site_name' => $ogTags['og:site_name'] ?? null,
+                'source_type' => $sourceType,
+                'embed_data' => $embedData,
+                'og_raw' => $ogTags ?: null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('OpenGraph fetch exception', [
+                'url' => $url,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->emptyResult($sourceType, $embedData);
+        }
+    }
+
+    // ── URL analysis (private) ──────────────────────────────────
+
     /**
      * @return array{video_id: string}|null
      */
@@ -215,6 +295,8 @@ class OpenGraphService
 
         return null;
     }
+
+    // ── Security (private) ──────────────────────────────────────
 
     /**
      * Validate that a URL is safe to fetch (prevents SSRF).
@@ -274,6 +356,8 @@ class OpenGraphService
         return true;
     }
 
+    // ── HTML parsing (private) ──────────────────────────────────
+
     /**
      * @return array<string, string>
      */
@@ -292,8 +376,9 @@ class OpenGraphService
         }
 
         $xpath = new \DOMXPath($dom);
-        $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
 
+        // Check property attribute (standard OG)
+        $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
         if ($metas) {
             foreach ($metas as $meta) {
                 if (! $meta instanceof \DOMElement) {
@@ -307,6 +392,62 @@ class OpenGraphService
             }
         }
 
+        // Fallback: check name attribute (some sites use name instead of property)
+        if (empty($tags)) {
+            $metas = $xpath->query('//meta[starts-with(@name, "og:")]');
+            if ($metas) {
+                foreach ($metas as $meta) {
+                    if (! $meta instanceof \DOMElement) {
+                        continue;
+                    }
+                    $name = $meta->getAttribute('name');
+                    $content = $meta->getAttribute('content');
+                    if ($name && $content) {
+                        $tags[$name] = $content;
+                    }
+                }
+            }
+        }
+
+        // Fallback: standard meta tags and <title>
+        if (empty($tags['og:title'])) {
+            $titleNode = $xpath->query('//title');
+            if ($titleNode && $titleNode->length > 0) {
+                $tags['og:title'] = trim($titleNode->item(0)->textContent);
+            }
+        }
+
+        if (empty($tags['og:description'])) {
+            $descMeta = $xpath->query('//meta[@name="description"]');
+            if ($descMeta && $descMeta->length > 0 && $descMeta->item(0) instanceof \DOMElement) {
+                $content = $descMeta->item(0)->getAttribute('content');
+                if ($content) {
+                    $tags['og:description'] = $content;
+                }
+            }
+        }
+
         return $tags;
+    }
+
+    // ── Helpers (private) ───────────────────────────────────────
+
+    /**
+     * Build a null-result array preserving source type and embed data.
+     *
+     * @param  array<string, string>|null  $embedData
+     * @return array{title: null, description: null, image: null, site_name: null, source_type: SourceType, embed_data: ?array<string, string>, og_raw: null}
+     */
+    private function emptyResult(SourceType $sourceType, ?array $embedData): array
+    {
+        return [
+            'title' => null,
+            'description' => null,
+            'image' => null,
+            'site_name' => null,
+            'source_type' => $sourceType,
+            'embed_data' => $embedData,
+            'og_raw' => null,
+        ];
     }
 }
