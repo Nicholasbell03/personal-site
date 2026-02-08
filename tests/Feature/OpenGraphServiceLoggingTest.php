@@ -193,3 +193,44 @@ it('refreshMetadata detects source type for youtube urls', function () {
     expect($result->source_type)->toBe(SourceType::Youtube)
         ->and($result->embed_data)->toBe(['video_id' => 'dQw4w9WgXcQ']);
 });
+
+it('falls back to name attribute when property attribute has no OG tags', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('<html><head>
+            <meta name="og:title" content="Name Attr Title">
+            <meta name="og:description" content="Name attr description">
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://example.com/name-attr');
+
+    expect($result['title'])->toBe('Name Attr Title')
+        ->and($result['description'])->toBe('Name attr description');
+});
+
+it('falls back to title tag and meta description when no OG tags exist', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('<html><head>
+            <title>Page Title Fallback</title>
+            <meta name="description" content="Meta description fallback">
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://example.com/no-og-tags');
+
+    expect($result['title'])->toBe('Page Title Fallback')
+        ->and($result['description'])->toBe('Meta description fallback');
+});
+
+it('does not override OG title with title tag', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('<html><head>
+            <meta property="og:title" content="OG Title">
+            <title>HTML Title</title>
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://example.com/both');
+
+    expect($result['title'])->toBe('OG Title');
+});
