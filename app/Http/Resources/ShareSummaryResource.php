@@ -26,6 +26,8 @@ class ShareSummaryResource extends JsonResource
             'description' => $this->description,
             'image_url' => $this->image_url,
             'site_name' => $this->site_name,
+            'author' => $this->author,
+            'commentary' => $this->commentary,
             'created_at' => $this->created_at,
         ];
     }

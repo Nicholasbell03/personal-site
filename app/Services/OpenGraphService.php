@@ -15,6 +15,7 @@ class OpenGraphService
         'description',
         'image_url',
         'site_name',
+        'author',
         'source_type',
         'embed_data',
         'og_raw',
@@ -25,7 +26,7 @@ class OpenGraphService
     /**
      * Fetch OG metadata from a URL.
      *
-     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
      */
     public function fetch(string $url): array
     {
@@ -60,6 +61,7 @@ class OpenGraphService
             'description' => $data['description'],
             'image_url' => $data['image'],
             'site_name' => $data['site_name'],
+            'author' => $data['author'],
             'og_raw' => $data['og_raw'],
         ], fn ($value) => $value !== null && $value !== '');
 
@@ -125,7 +127,7 @@ class OpenGraphService
     /**
      * Fetch video metadata from the YouTube Data API v3.
      *
-     * @return array{title: ?string, description: ?string, image: ?string, site_name: string}|null
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: string, author: ?string}|null
      */
     private function fetchYoutubeMetadata(string $videoId): ?array
     {
@@ -183,6 +185,7 @@ class OpenGraphService
                 'description' => $snippet['description'] ?? null,
                 'image' => $thumbnail['url'] ?? null,
                 'site_name' => 'YouTube',
+                'author' => $snippet['channelTitle'] ?? null,
             ];
         } catch (\Throwable $e) {
             Log::error('YouTube API exception', [
@@ -199,7 +202,7 @@ class OpenGraphService
      * Fetch metadata by scraping OG tags from the URL's HTML.
      *
      * @param  array<string, string>|null  $embedData
-     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
      */
     private function fetchViaOgScraping(string $url, SourceType $sourceType, ?array $embedData): array
     {
@@ -236,11 +239,14 @@ class OpenGraphService
                 ]);
             }
 
+            $author = $this->extractAuthor($url, $sourceType, $ogTags);
+
             return [
                 'title' => $ogTags['og:title'] ?? null,
                 'description' => $ogTags['og:description'] ?? null,
                 'image' => $ogTags['og:image'] ?? null,
                 'site_name' => $ogTags['og:site_name'] ?? null,
+                'author' => $author,
                 'source_type' => $sourceType,
                 'embed_data' => $embedData,
                 'og_raw' => $ogTags ?: null,
@@ -254,6 +260,28 @@ class OpenGraphService
 
             return $this->emptyResult($sourceType, $embedData);
         }
+    }
+
+    // ── Author extraction (private) ─────────────────────────────
+
+    /**
+     * Extract author from URL patterns or OG tags based on source type.
+     *
+     * @param  array<string, string>  $ogTags
+     */
+    private function extractAuthor(string $url, SourceType $sourceType, array $ogTags): ?string
+    {
+        if ($sourceType === SourceType::XPost) {
+            $path = parse_url($url, PHP_URL_PATH);
+
+            if ($path && preg_match('#^/([^/]+)/status/\d+#', $path, $matches)) {
+                return '@'.$matches[1];
+            }
+
+            return null;
+        }
+
+        return $ogTags['article:author'] ?? null;
     }
 
     // ── URL analysis (private) ──────────────────────────────────
@@ -379,8 +407,8 @@ class OpenGraphService
 
         $xpath = new \DOMXPath($dom);
 
-        // Check property attribute (standard OG)
-        $metas = $xpath->query('//meta[starts-with(@property, "og:")]');
+        // Check property attribute (standard OG + article:*)
+        $metas = $xpath->query('//meta[starts-with(@property, "og:") or starts-with(@property, "article:")]');
         if ($metas) {
             foreach ($metas as $meta) {
                 if (! $meta instanceof \DOMElement) {
@@ -396,7 +424,7 @@ class OpenGraphService
 
         // Fallback: check name attribute (some sites use name instead of property)
         if (empty($tags)) {
-            $metas = $xpath->query('//meta[starts-with(@name, "og:")]');
+            $metas = $xpath->query('//meta[starts-with(@name, "og:") or starts-with(@name, "article:")]');
             if ($metas) {
                 foreach ($metas as $meta) {
                     if (! $meta instanceof \DOMElement) {
@@ -440,7 +468,7 @@ class OpenGraphService
      * Build a null-result array preserving source type and embed data.
      *
      * @param  array<string, string>|null  $embedData
-     * @return array{title: null, description: null, image: null, site_name: null, source_type: SourceType, embed_data: ?array<string, string>, og_raw: null}
+     * @return array{title: null, description: null, image: null, site_name: null, author: null, source_type: SourceType, embed_data: ?array<string, string>, og_raw: null}
      */
     private function emptyResult(SourceType $sourceType, ?array $embedData): array
     {
@@ -449,6 +477,7 @@ class OpenGraphService
             'description' => null,
             'image' => null,
             'site_name' => null,
+            'author' => null,
             'source_type' => $sourceType,
             'embed_data' => $embedData,
             'og_raw' => null,

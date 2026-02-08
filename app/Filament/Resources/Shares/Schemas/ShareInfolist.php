@@ -25,6 +25,8 @@ class ShareInfolist
                             ->badge(),
                         TextEntry::make('site_name')
                             ->placeholder('-'),
+                        TextEntry::make('author')
+                            ->placeholder('-'),
                         TextEntry::make('description')
                             ->placeholder('-')
                             ->columnSpanFull(),

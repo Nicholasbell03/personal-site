@@ -20,6 +20,7 @@ it('fetches metadata from youtube api when api key is configured', function () {
                 'snippet' => [
                     'title' => 'Amazing Video',
                     'description' => 'A great video about testing',
+                    'channelTitle' => 'Test Channel',
                     'thumbnails' => [
                         'default' => ['url' => 'https://i.ytimg.com/vi/abc123/default.jpg'],
                         'high' => ['url' => 'https://i.ytimg.com/vi/abc123/hqdefault.jpg'],
@@ -36,6 +37,7 @@ it('fetches metadata from youtube api when api key is configured', function () {
         ->and($result['description'])->toBe('A great video about testing')
         ->and($result['image'])->toBe('https://i.ytimg.com/vi/abc123/maxresdefault.jpg')
         ->and($result['site_name'])->toBe('YouTube')
+        ->and($result['author'])->toBe('Test Channel')
         ->and($result['source_type'])->toBe(SourceType::Youtube)
         ->and($result['embed_data'])->toBe(['video_id' => 'dQw4w9WgXcQ'])
         ->and($result['og_raw'])->toBeNull();

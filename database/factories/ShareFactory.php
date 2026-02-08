@@ -28,6 +28,7 @@ class ShareFactory extends Factory
             'description' => fake()->paragraph(),
             'image_url' => fake()->imageUrl(),
             'site_name' => fake()->domainName(),
+            'author' => fake()->name(),
             'commentary' => fake()->paragraphs(2, true),
             'embed_data' => null,
             'og_raw' => null,
@@ -39,15 +40,19 @@ class ShareFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'url' => 'https://www.youtube.com/watch?v='.fake()->regexify('[a-zA-Z0-9_-]{11}'),
             'source_type' => SourceType::Youtube,
+            'author' => fake()->name(),
             'embed_data' => ['video_id' => fake()->regexify('[a-zA-Z0-9_-]{11}')],
         ]);
     }
 
     public function xPost(): static
     {
+        $username = fake()->userName();
+
         return $this->state(fn (array $attributes) => [
-            'url' => 'https://x.com/'.fake()->userName().'/status/'.fake()->numerify('####################'),
+            'url' => 'https://x.com/'.$username.'/status/'.fake()->numerify('####################'),
             'source_type' => SourceType::XPost,
+            'author' => '@'.$username,
             'embed_data' => ['tweet_id' => fake()->numerify('####################')],
         ]);
     }

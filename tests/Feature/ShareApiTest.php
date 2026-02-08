@@ -28,11 +28,12 @@ it('returns correct fields from featured endpoint', function () {
                     'description',
                     'image_url',
                     'site_name',
+                    'author',
+                    'commentary',
                     'created_at',
                 ],
             ],
-        ])
-        ->assertJsonMissing(['commentary']);
+        ]);
 });
 
 it('orders featured endpoint by latest created', function () {
@@ -88,6 +89,7 @@ it('returns full share by slug from show endpoint', function () {
                 'description',
                 'image_url',
                 'site_name',
+                'author',
                 'commentary',
                 'embed_data',
                 'created_at',
