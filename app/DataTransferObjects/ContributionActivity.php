@@ -23,7 +23,7 @@ readonly class ContributionActivity implements JsonSerializable
     }
 
     /**
-     * @return array{daily_contributions: list<array{date: string, count: int}>, stats: array{total_last_30_days: int, total_last_90_days: int, current_streak: int, longest_streak: int, average_per_day: float}}
+     * @return array{daily_contributions: list<array{date: string, count: int}>, stats: array{total_last_7_days: int, total_last_30_days: int, current_streak: int}}
      */
     public function toArray(): array
     {
@@ -37,7 +37,7 @@ readonly class ContributionActivity implements JsonSerializable
     }
 
     /**
-     * @return array{daily_contributions: list<array{date: string, count: int}>, stats: array{total_last_30_days: int, total_last_90_days: int, current_streak: int, longest_streak: int, average_per_day: float}}
+     * @return array{daily_contributions: list<array{date: string, count: int}>, stats: array{total_last_7_days: int, total_last_30_days: int, current_streak: int}}
      */
     public function jsonSerialize(): array
     {

@@ -13,7 +13,7 @@ class GitHubService
 {
     private const GRAPHQL_URL = 'https://api.github.com/graphql';
 
-    private const DAYS_TO_FETCH = 90;
+    private const DAYS_TO_FETCH = 30;
 
     /**
      * Fetch GitHub contribution activity for the configured user.
@@ -93,7 +93,7 @@ class GitHubService
     }
 
     /**
-     * Transform raw weeks/days into a ContributionActivity for the last 90 days.
+     * Transform raw weeks/days into a ContributionActivity for the last 30 days.
      *
      * @param  list<array{contributionDays: list<array{contributionCount: int, date: string}>}>  $weeks
      */
@@ -132,50 +132,33 @@ class GitHubService
      */
     private function calculateStats(array $days): ContributionStats
     {
-        $thirtyDaysAgo = Carbon::today()->subDays(30)->toDateString();
+        $sevenDaysAgo = Carbon::today()->subDays(7)->toDateString();
 
+        $totalLast7 = 0;
         $totalLast30 = 0;
-        $totalLast90 = 0;
 
         foreach ($days as $day) {
-            $totalLast90 += $day->count;
+            $totalLast30 += $day->count;
 
-            if ($day->date >= $thirtyDaysAgo) {
-                $totalLast30 += $day->count;
+            if ($day->date >= $sevenDaysAgo) {
+                $totalLast7 += $day->count;
             }
         }
 
         $currentStreak = 0;
-        $longestStreak = 0;
-        $streak = 0;
 
-        $reversedDays = array_reverse($days);
-
-        foreach ($reversedDays as $index => $day) {
+        foreach (array_reverse($days) as $day) {
             if ($day->count > 0) {
-                $streak++;
-                $longestStreak = max($longestStreak, $streak);
-
-                if ($index === 0 || $currentStreak > 0) {
-                    $currentStreak = $streak;
-                }
+                $currentStreak++;
             } else {
-                if ($index === 0) {
-                    $currentStreak = 0;
-                }
-
-                $streak = 0;
+                break;
             }
         }
 
-        $dayCount = count($days);
-
         return new ContributionStats(
+            totalLast7Days: $totalLast7,
             totalLast30Days: $totalLast30,
-            totalLast90Days: $totalLast90,
             currentStreak: $currentStreak,
-            longestStreak: $longestStreak,
-            averagePerDay: $dayCount > 0 ? round($totalLast90 / $dayCount, 1) : 0.0,
         );
     }
 }

@@ -65,7 +65,7 @@ beforeEach(function () {
 });
 
 it('returns correct JSON structure on success', function () {
-    $days = buildContributionDays(90, fn () => 3);
+    $days = buildContributionDays(30, fn () => 3);
 
     Http::fake([
         'api.github.com/graphql' => Http::response(fakeGitHubGraphQlResponse($days)),
@@ -80,19 +80,17 @@ it('returns correct JSON structure on success', function () {
                     '*' => ['date', 'count'],
                 ],
                 'stats' => [
+                    'total_last_7_days',
                     'total_last_30_days',
-                    'total_last_90_days',
                     'current_streak',
-                    'longest_streak',
-                    'average_per_day',
                 ],
             ],
         ]);
 });
 
 it('calculates stats correctly for known contribution data', function () {
-    // Create 90 days: first 60 days have 1 contribution, last 30 days have 2 contributions
-    $days = buildContributionDays(90, fn (int $daysAgo) => $daysAgo >= 30 ? 1 : 2);
+    // Create 30 days: first 23 days have 1 contribution, last 7 days have 3
+    $days = buildContributionDays(30, fn (int $daysAgo) => $daysAgo >= 7 ? 1 : 3);
 
     Http::fake([
         'api.github.com/graphql' => Http::response(fakeGitHubGraphQlResponse($days)),
@@ -103,24 +101,18 @@ it('calculates stats correctly for known contribution data', function () {
     $response->assertOk();
     $stats = $response->json('data.stats');
 
-    // Last 30 days: subDays(30) is inclusive, so 30 days with count 2 + day-30-ago with count 1 = 61
-    expect($stats['total_last_30_days'])->toBe(61);
+    // Last 7 days: subDays(7) is inclusive, so 7 days with count 3 + day-7-ago with count 1 = 22
+    expect($stats['total_last_7_days'])->toBe(22);
 
-    // Last 90 days: 60 days * 1 + 30 days * 2 = 120 (day 90 ago is excluded by subDays(90) cutoff)
-    expect($stats['total_last_90_days'])->toBe(120);
+    // Last 30 days: 23 days * 1 + 7 days * 3 = 44
+    expect($stats['total_last_30_days'])->toBe(44);
 
-    // Current streak: all 90 days have contributions > 0
-    expect($stats['current_streak'])->toBe(90);
-
-    // Longest streak: same as current
-    expect($stats['longest_streak'])->toBe(90);
-
-    // Average: 120 / 90 = 1.3
-    expect($stats['average_per_day'])->toBe(1.3);
+    // Current streak: all 30 days have contributions > 0
+    expect($stats['current_streak'])->toBe(30);
 });
 
 it('caches response so second call does not hit GitHub', function () {
-    $days = buildContributionDays(90, fn () => 1);
+    $days = buildContributionDays(30, fn () => 1);
 
     Http::fake([
         'api.github.com/graphql' => Http::response(fakeGitHubGraphQlResponse($days)),
@@ -144,11 +136,9 @@ it('returns empty structure when GitHub API fails and no stale cache', function 
             'data' => [
                 'daily_contributions' => [],
                 'stats' => [
+                    'total_last_7_days' => 0,
                     'total_last_30_days' => 0,
-                    'total_last_90_days' => 0,
                     'current_streak' => 0,
-                    'longest_streak' => 0,
-                    'average_per_day' => 0.0,
                 ],
             ],
         ]);
@@ -158,11 +148,9 @@ it('returns stale cache when GitHub API fails but stale data exists', function (
     $staleActivity = new ContributionActivity(
         dailyContributions: [new ContributionDay(date: '2025-01-01', count: 5)],
         stats: new ContributionStats(
+            totalLast7Days: 10,
             totalLast30Days: 42,
-            totalLast90Days: 128,
             currentStreak: 7,
-            longestStreak: 14,
-            averagePerDay: 1.4,
         ),
     );
 
@@ -179,11 +167,9 @@ it('returns stale cache when GitHub API fails but stale data exists', function (
             'data' => [
                 'daily_contributions' => [['date' => '2025-01-01', 'count' => 5]],
                 'stats' => [
+                    'total_last_7_days' => 10,
                     'total_last_30_days' => 42,
-                    'total_last_90_days' => 128,
                     'current_streak' => 7,
-                    'longest_streak' => 14,
-                    'average_per_day' => 1.4,
                 ],
             ],
         ]);
@@ -202,11 +188,9 @@ it('returns empty structure when credentials are missing', function () {
             'data' => [
                 'daily_contributions' => [],
                 'stats' => [
+                    'total_last_7_days' => 0,
                     'total_last_30_days' => 0,
-                    'total_last_90_days' => 0,
                     'current_streak' => 0,
-                    'longest_streak' => 0,
-                    'average_per_day' => 0.0,
                 ],
             ],
         ]);
@@ -215,8 +199,8 @@ it('returns empty structure when credentials are missing', function () {
 });
 
 it('calculates current streak correctly when today has zero contributions', function () {
-    // Last 10 days: days 9-3 ago have contributions, days 2-0 ago have zero
-    $days = buildContributionDays(90, fn (int $daysAgo) => $daysAgo >= 3 && $daysAgo <= 9 ? 5 : 0);
+    // Days 9-3 ago have contributions, days 2-0 ago have zero
+    $days = buildContributionDays(30, fn (int $daysAgo) => $daysAgo >= 3 && $daysAgo <= 9 ? 5 : 0);
 
     Http::fake([
         'api.github.com/graphql' => Http::response(fakeGitHubGraphQlResponse($days)),
@@ -228,5 +212,4 @@ it('calculates current streak correctly when today has zero contributions', func
     $stats = $response->json('data.stats');
 
     expect($stats['current_streak'])->toBe(0);
-    expect($stats['longest_streak'])->toBe(7);
 });
