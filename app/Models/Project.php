@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PublishStatus;
 use App\Models\Concerns\ClearsApiCache;
+use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property \Illuminate\Support\Carbon|null $published_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property array<int, float>|null $embedding
+ * @property \Illuminate\Support\Carbon|null $embedding_generated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Technology> $technologies
  * @method static \Database\Factories\ProjectFactory factory($count = null, $state = [])
  * @method static Builder<static>|Project featured()
@@ -55,6 +58,7 @@ class Project extends Model
     use HasFactory;
 
     use ClearsApiCache;
+    use HasEmbedding;
     use HasPublishStatus;
     use HasSlug;
 
@@ -83,6 +87,8 @@ class Project extends Model
             'status' => PublishStatus::class,
             'published_at' => 'datetime',
             'is_featured' => 'boolean',
+            'embedding' => 'array',
+            'embedding_generated_at' => 'datetime',
         ];
     }
 
@@ -115,5 +121,31 @@ class Project extends Model
     public static function getApiCacheKey(): string
     {
         return 'api.v1.projects';
+    }
+
+    public function getEmbeddableText(): string
+    {
+        if ($this->exists) {
+            $this->loadMissing('technologies');
+        }
+
+        $techNames = $this->relationLoaded('technologies')
+            ? $this->technologies->pluck('name')->implode(', ')
+            : '';
+
+        return implode("\n", array_filter([
+            $this->title,
+            $this->description,
+            $this->long_description,
+            $techNames ? 'Technologies: '.$techNames : null,
+        ]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getEmbeddableFields(): array
+    {
+        return ['title', 'description', 'long_description'];
     }
 }
