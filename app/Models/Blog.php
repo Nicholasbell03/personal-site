@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PublishStatus;
 use App\Models\Concerns\ClearsApiCache;
+use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int $read_time
+ * @property array<int, float>|null $embedding
+ * @property \Illuminate\Support\Carbon|null $embedding_generated_at
  * @method static \Database\Factories\BlogFactory factory($count = null, $state = [])
  * @method static Builder<static>|Blog latestPublished()
  * @method static Builder<static>|Blog newModelQuery()
@@ -49,6 +52,7 @@ class Blog extends Model
     use HasFactory;
 
     use ClearsApiCache;
+    use HasEmbedding;
     use HasPublishStatus;
     use HasSlug;
 
@@ -75,6 +79,8 @@ class Blog extends Model
             'status' => PublishStatus::class,
             'published_at' => 'datetime',
             'read_time' => 'integer',
+            'embedding' => 'array',
+            'embedding_generated_at' => 'datetime',
         ];
     }
 
@@ -99,5 +105,22 @@ class Blog extends Model
     public static function getApiCacheKey(): string
     {
         return 'api.v1.blogs';
+    }
+
+    public function getEmbeddableText(): string
+    {
+        return implode("\n", array_filter([
+            $this->title,
+            $this->excerpt,
+            strip_tags($this->content ?? ''),
+        ]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getEmbeddableFields(): array
+    {
+        return ['title', 'excerpt', 'content'];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SourceType;
 use App\Models\Concerns\ClearsApiCache;
+use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasSlug;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property array<string, mixed>|null $og_raw
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property array<int, float>|null $embedding
+ * @property \Illuminate\Support\Carbon|null $embedding_generated_at
  *
  * @method static \Database\Factories\ShareFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Share newModelQuery()
@@ -37,6 +40,7 @@ class Share extends Model
     use HasFactory;
 
     use ClearsApiCache;
+    use HasEmbedding;
     use HasSlug;
 
     /**
@@ -65,6 +69,8 @@ class Share extends Model
             'source_type' => SourceType::class,
             'embed_data' => 'array',
             'og_raw' => 'array',
+            'embedding' => 'array',
+            'embedding_generated_at' => 'datetime',
         ];
     }
 
@@ -82,5 +88,22 @@ class Share extends Model
     public static function getApiCacheKey(): string
     {
         return 'api.v1.shares';
+    }
+
+    public function getEmbeddableText(): string
+    {
+        return implode("\n", array_filter([
+            $this->title,
+            $this->description,
+            $this->commentary ? 'My thoughts: '.$this->commentary : null,
+        ]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getEmbeddableFields(): array
+    {
+        return ['title', 'description', 'commentary'];
     }
 }
