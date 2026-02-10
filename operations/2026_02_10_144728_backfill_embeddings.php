@@ -15,6 +15,10 @@ return new class extends OneTimeOperation
      */
     public function process(): void
     {
-        Artisan::call('embeddings:generate');
+        $exitCode = Artisan::call('embeddings:generate');
+
+        if ($exitCode !== 0) {
+            throw new \RuntimeException('embeddings:generate failed with exit code '.$exitCode.': '.Artisan::output());
+        }
     }
 };
