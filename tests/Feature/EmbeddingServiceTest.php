@@ -13,7 +13,8 @@ use Laravel\Ai\Responses\EmbeddingsResponse;
 it('generates and stores embedding for a model', function () {
     Queue::fake();
 
-    $fakeEmbedding = Embeddings::fakeEmbedding(1536);
+    $dimensions = config('services.embeddings.dimensions');
+    $fakeEmbedding = Embeddings::fakeEmbedding($dimensions);
     Embeddings::fake([
         new EmbeddingsResponse([$fakeEmbedding], 100, new Meta('openai', 'text-embedding-3-small')),
     ]);
@@ -31,7 +32,7 @@ it('generates and stores embedding for a model', function () {
 
     $blog->refresh();
     expect($blog->embedding)->toBeArray()
-        ->and($blog->embedding)->toHaveCount(1536)
+        ->and($blog->embedding)->toHaveCount($dimensions)
         ->and($blog->embedding_generated_at)->not->toBeNull();
 });
 
@@ -79,10 +80,11 @@ it('logs error and returns false on API failure', function () {
     expect($result)->toBeFalse();
 });
 
-it('uses updateQuietly to prevent re-triggering saved event', function () {
+it('uses saveQuietly to prevent re-triggering model events', function () {
     Queue::fake();
 
-    $fakeEmbedding = Embeddings::fakeEmbedding(1536);
+    $dimensions = config('services.embeddings.dimensions');
+    $fakeEmbedding = Embeddings::fakeEmbedding($dimensions);
     Embeddings::fake([
         new EmbeddingsResponse([$fakeEmbedding], 100, new Meta('openai', 'text-embedding-3-small')),
     ]);
