@@ -16,7 +16,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.31",
-        "opcodesio/log-viewer": "^3.21"
+        "opcodesio/log-viewer": "^3.21",
+        "timokoerber/laravel-one-time-operations": "^1.4"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.6",
