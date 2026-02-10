@@ -5,6 +5,9 @@ php artisan migrate --force
 echo "Running production seeders..."
 php artisan db:seed --class=ProductionSeeder --force
 
+echo "Processing one-time operations..."
+php artisan operations:process
+
 echo "Caching configuration..."
 php artisan config:cache
 
