@@ -263,6 +263,9 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Generate code that prevents N+1 query problems by using eager loading.
 - Use Laravel's query builder for very complex database operations.
 
+### Migrations
+- When adding columns to existing tables, place them before `timestamps()` columns (`created_at`, `updated_at`) in a logical position within the schema. This is a neatness preference.
+
 ### Model Creation
 - When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `list-artisan-commands` to check the available options to `php artisan make:model`.
 
