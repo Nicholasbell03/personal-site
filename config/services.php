@@ -46,8 +46,8 @@ return [
 
     'embeddings' => [
         'provider' => env('EMBEDDING_PROVIDER', 'openai'),
-        'model' => env('EMBEDDING_MODEL', 'text-embedding-3-small'),
-        'dimensions' => (int) env('EMBEDDING_DIMENSIONS', 1536),
+        'model' => env('EMBEDDING_MODEL', 'text-embedding-3-large'),
+        'dimensions' => (int) env('EMBEDDING_DIMENSIONS', 3072),
     ],
 
 ];
