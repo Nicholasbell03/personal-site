@@ -79,7 +79,7 @@ it('logs error and returns false on API failure', function () {
     expect($result)->toBeFalse();
 });
 
-it('uses updateQuietly to prevent re-triggering saved event', function () {
+it('uses saveQuietly to prevent re-triggering model events', function () {
     Queue::fake();
 
     $fakeEmbedding = Embeddings::fakeEmbedding(1536);
