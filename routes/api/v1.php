@@ -3,9 +3,12 @@
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\ShareController;
 use App\Http\Middleware\ValidatePreviewToken;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/search', SearchController::class)->name('v1.search');
 
 Route::get('/github/activity', [GitHubController::class, 'activity'])
     ->name('v1.github.activity');
