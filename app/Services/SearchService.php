@@ -50,10 +50,11 @@ class SearchService
     private function searchBlogs(string $query): array
     {
         $builder = Blog::query()->published();
+        $fields = ['title', 'excerpt', 'content'];
 
         $blogs = $this->isPostgres($builder)
-            ? $this->vectorSearch($builder, $query)
-            : $this->likeSearch($builder, $query, ['title', 'excerpt', 'content']);
+            ? $this->hybridSearch($builder, $query, $fields)
+            : $this->likeSearch($builder, $query, $fields);
 
         return BlogSummaryResource::collection($blogs)->resolve();
     }
@@ -64,10 +65,11 @@ class SearchService
     private function searchProjects(string $query): array
     {
         $builder = Project::query()->published()->with('technologies');
+        $fields = ['title', 'description', 'long_description'];
 
         $projects = $this->isPostgres($builder)
-            ? $this->vectorSearch($builder, $query)
-            : $this->likeSearch($builder, $query, ['title', 'description', 'long_description']);
+            ? $this->hybridSearch($builder, $query, $fields)
+            : $this->likeSearch($builder, $query, $fields);
 
         return ProjectSummaryResource::collection($projects)->resolve();
     }
@@ -78,10 +80,11 @@ class SearchService
     private function searchShares(string $query): array
     {
         $builder = Share::query();
+        $fields = ['title', 'description', 'commentary', 'url'];
 
         $shares = $this->isPostgres($builder)
-            ? $this->vectorSearch($builder, $query)
-            : $this->likeSearch($builder, $query, ['title', 'description', 'commentary']);
+            ? $this->hybridSearch($builder, $query, $fields)
+            : $this->likeSearch($builder, $query, $fields);
 
         return ShareSummaryResource::collection($shares)->resolve();
     }
@@ -111,6 +114,74 @@ class SearchService
 
             return collect();
         }
+    }
+
+    /**
+     * Keyword search using ILIKE on PostgreSQL.
+     *
+     * Uses AND semantics — all terms must match at least one field.
+     *
+     * @param  Builder<*>  $queryBuilder
+     * @param  list<string>  $fields
+     */
+    private function keywordSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    {
+        $terms = collect(preg_split('/\s+/', trim($query)))
+            ->filter()
+            ->values();
+
+        if ($terms->isEmpty()) {
+            return collect();
+        }
+
+        return $queryBuilder
+            ->where(function ($q) use ($terms, $fields) {
+                foreach ($terms as $term) {
+                    $q->where(function ($inner) use ($term, $fields) {
+                        foreach ($fields as $field) {
+                            $inner->orWhere($field, 'ILIKE', "%{$term}%");
+                        }
+                    });
+                }
+            })
+            ->limit(self::RESULTS_PER_TYPE)
+            ->get();
+    }
+
+    /**
+     * Hybrid search combining vector similarity and keyword matching via Reciprocal Rank Fusion.
+     *
+     * Documents appearing in both result sets get boosted scores.
+     *
+     * @param  Builder<*>  $queryBuilder
+     * @param  list<string>  $fields
+     */
+    private function hybridSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    {
+        $vectorResults = $this->vectorSearch(clone $queryBuilder, $query);
+        $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields);
+
+        $k = 60;
+        $scores = [];
+        /** @var array<int, \Illuminate\Database\Eloquent\Model> $models */
+        $models = [];
+
+        foreach ($vectorResults->values() as $i => $model) {
+            $scores[$model->id] = ($scores[$model->id] ?? 0) + (1 / ($k + $i + 1));
+            $models[$model->id] = $model;
+        }
+
+        foreach ($keywordResults->values() as $i => $model) {
+            $scores[$model->id] = ($scores[$model->id] ?? 0) + (1 / ($k + $i + 1));
+            $models[$model->id] = $model;
+        }
+
+        arsort($scores);
+
+        return collect(array_keys($scores))
+            ->take(self::RESULTS_PER_TYPE)
+            ->map(fn ($id) => $models[$id])
+            ->values();
     }
 
     /**
