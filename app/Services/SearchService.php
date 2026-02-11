@@ -8,7 +8,9 @@ use App\Http\Resources\ShareSummaryResource;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Connection;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class SearchService
@@ -47,9 +49,11 @@ class SearchService
      */
     private function searchBlogs(string $query): array
     {
-        $blogs = $this->isPostgres()
-            ? $this->vectorSearch(Blog::query()->published(), $query)
-            : $this->likeSearch(Blog::query()->published(), $query, ['title', 'excerpt', 'content']);
+        $builder = Blog::query()->published();
+
+        $blogs = $this->isPostgres($builder)
+            ? $this->vectorSearch($builder, $query)
+            : $this->likeSearch($builder, $query, ['title', 'excerpt', 'content']);
 
         return BlogSummaryResource::collection($blogs)->resolve();
     }
@@ -59,9 +63,11 @@ class SearchService
      */
     private function searchProjects(string $query): array
     {
-        $projects = $this->isPostgres()
-            ? $this->vectorSearch(Project::query()->published()->with('technologies'), $query)
-            : $this->likeSearch(Project::query()->published()->with('technologies'), $query, ['title', 'description', 'long_description']);
+        $builder = Project::query()->published()->with('technologies');
+
+        $projects = $this->isPostgres($builder)
+            ? $this->vectorSearch($builder, $query)
+            : $this->likeSearch($builder, $query, ['title', 'description', 'long_description']);
 
         return ProjectSummaryResource::collection($projects)->resolve();
     }
@@ -71,9 +77,11 @@ class SearchService
      */
     private function searchShares(string $query): array
     {
-        $shares = $this->isPostgres()
-            ? $this->vectorSearch(Share::query(), $query)
-            : $this->likeSearch(Share::query(), $query, ['title', 'description', 'commentary']);
+        $builder = Share::query();
+
+        $shares = $this->isPostgres($builder)
+            ? $this->vectorSearch($builder, $query)
+            : $this->likeSearch($builder, $query, ['title', 'description', 'commentary']);
 
         return ShareSummaryResource::collection($shares)->resolve();
     }
@@ -85,9 +93,9 @@ class SearchService
      * the nearest neighbours by cosine distance. Only returns results
      * that have an embedding and meet the minimum similarity threshold.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<*>  $queryBuilder
+     * @param  Builder<*>  $queryBuilder
      */
-    private function vectorSearch(mixed $queryBuilder, string $query): mixed
+    private function vectorSearch(Builder $queryBuilder, string $query): Collection
     {
         try {
             return $queryBuilder
@@ -98,7 +106,7 @@ class SearchService
         } catch (\Throwable $e) {
             Log::error('SearchService: vector search failed', [
                 'query' => $query,
-                'exception' => $e->getMessage(),
+                'exception' => $e,
             ]);
 
             return collect();
@@ -108,10 +116,12 @@ class SearchService
     /**
      * Fallback LIKE-based search for SQLite (tests).
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<*>  $queryBuilder
+     * Uses AND semantics between terms — all terms must match at least one field.
+     *
+     * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
      */
-    private function likeSearch(mixed $queryBuilder, string $query, array $fields): mixed
+    private function likeSearch(Builder $queryBuilder, string $query, array $fields): Collection
     {
         $terms = collect(preg_split('/\s+/', trim($query)))
             ->filter()
@@ -135,8 +145,13 @@ class SearchService
             ->get();
     }
 
-    private function isPostgres(): bool
+    /**
+     * @param  Builder<*>  $queryBuilder
+     */
+    private function isPostgres(Builder $queryBuilder): bool
     {
-        return DB::connection()->getDriverName() === 'pgsql';
+        $connection = $queryBuilder->getConnection();
+
+        return $connection instanceof Connection && $connection->getDriverName() === 'pgsql';
     }
 }
