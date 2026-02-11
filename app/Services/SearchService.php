@@ -11,7 +11,10 @@ use App\Models\Share;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Concurrency;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SearchService
 {
@@ -27,63 +30,99 @@ class SearchService
      */
     public function search(string $query, string $type = 'all'): array
     {
-        $results = [];
+        $isPostgres = DB::connection()->getDriverName() === 'pgsql';
+        $queryVector = $isPostgres ? $this->embedQuery($query) : null;
+
+        $tasks = [];
 
         if ($type === 'all' || $type === 'blog') {
-            $results['blogs'] = $this->searchBlogs($query);
+            $tasks['blogs'] = fn () => $this->searchBlogs($query, $queryVector);
         }
 
         if ($type === 'all' || $type === 'project') {
-            $results['projects'] = $this->searchProjects($query);
+            $tasks['projects'] = fn () => $this->searchProjects($query, $queryVector);
         }
 
         if ($type === 'all' || $type === 'share') {
-            $results['shares'] = $this->searchShares($query);
+            $tasks['shares'] = fn () => $this->searchShares($query, $queryVector);
         }
 
-        return $results;
+        if ($isPostgres && count($tasks) > 1) {
+            try {
+                return Concurrency::run($tasks);
+            } catch (\Throwable $e) {
+                Log::warning('SearchService: concurrent search failed, falling back to sequential', [
+                    'query' => $query,
+                    'exception' => $e,
+                ]);
+            }
+        }
+
+        return array_map(fn ($task) => $task(), $tasks);
     }
 
     /**
+     * Embed the search query text once upfront.
+     *
+     * @return list<float>|null
+     */
+    private function embedQuery(string $query): ?array
+    {
+        try {
+            return Str::of($query)->toEmbeddings(cache: true);
+        } catch (\Throwable $e) {
+            Log::error('SearchService: query embedding failed', [
+                'query' => $query,
+                'exception' => $e,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * @param  list<float>|null  $queryVector
      * @return list<array<string, mixed>>
      */
-    private function searchBlogs(string $query): array
+    private function searchBlogs(string $query, ?array $queryVector): array
     {
         $builder = Blog::query()->published();
         $fields = ['title', 'excerpt', 'content'];
 
         $blogs = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
+            ? $this->hybridSearch($builder, $query, $fields, $queryVector)
             : $this->likeSearch($builder, $query, $fields);
 
         return BlogSummaryResource::collection($blogs)->resolve();
     }
 
     /**
+     * @param  list<float>|null  $queryVector
      * @return list<array<string, mixed>>
      */
-    private function searchProjects(string $query): array
+    private function searchProjects(string $query, ?array $queryVector): array
     {
         $builder = Project::query()->published()->with('technologies');
         $fields = ['title', 'description', 'long_description'];
 
         $projects = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
+            ? $this->hybridSearch($builder, $query, $fields, $queryVector)
             : $this->likeSearch($builder, $query, $fields);
 
         return ProjectSummaryResource::collection($projects)->resolve();
     }
 
     /**
+     * @param  list<float>|null  $queryVector
      * @return list<array<string, mixed>>
      */
-    private function searchShares(string $query): array
+    private function searchShares(string $query, ?array $queryVector): array
     {
         $builder = Share::query();
         $fields = ['title', 'description', 'commentary', 'url'];
 
         $shares = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
+            ? $this->hybridSearch($builder, $query, $fields, $queryVector)
             : $this->likeSearch($builder, $query, $fields);
 
         return ShareSummaryResource::collection($shares)->resolve();
@@ -92,23 +131,23 @@ class SearchService
     /**
      * Semantic search using pgvector cosine similarity.
      *
-     * Embeds the query text via the configured AI provider, then finds
-     * the nearest neighbours by cosine distance. Only returns results
-     * that have an embedding and meet the minimum similarity threshold.
+     * Accepts a pre-computed embedding vector and finds the nearest
+     * neighbours by cosine distance. Only returns results that have
+     * an embedding and meet the minimum similarity threshold.
      *
      * @param  Builder<*>  $queryBuilder
+     * @param  list<float>  $queryVector
      */
-    private function vectorSearch(Builder $queryBuilder, string $query): Collection
+    private function vectorSearch(Builder $queryBuilder, array $queryVector): Collection
     {
         try {
             return $queryBuilder
                 ->whereNotNull('embedding')
-                ->whereVectorSimilarTo('embedding', $query, self::MIN_SIMILARITY)
+                ->whereVectorSimilarTo('embedding', $queryVector, self::MIN_SIMILARITY)
                 ->limit(self::RESULTS_PER_TYPE)
                 ->get();
         } catch (\Throwable $e) {
             Log::error('SearchService: vector search failed', [
-                'query' => $query,
                 'exception' => $e,
             ]);
 
@@ -155,10 +194,13 @@ class SearchService
      *
      * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
+     * @param  list<float>|null  $queryVector
      */
-    private function hybridSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    private function hybridSearch(Builder $queryBuilder, string $query, array $fields, ?array $queryVector): Collection
     {
-        $vectorResults = $this->vectorSearch(clone $queryBuilder, $query);
+        $vectorResults = $queryVector
+            ? $this->vectorSearch(clone $queryBuilder, $queryVector)
+            : collect();
         $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields);
 
         $k = 60;
