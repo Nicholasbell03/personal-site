@@ -141,6 +141,29 @@ it('reuses existing conversation when conversation_id is provided', function () 
     expect($messages)->toHaveCount(4);
 });
 
+it('returns 500 when chatbot user is not seeded', function () {
+    // Delete the chatbot user seeded in beforeEach
+    User::where('email', config('chat.user.email'))->delete();
+    Cache::forget('chat.user_id');
+
+    PortfolioAgent::fake(['Response']);
+
+    $this->postJson('/api/v1/chat', ['message' => 'Hello'])
+        ->assertInternalServerError();
+});
+
+it('does not cache null user_id', function () {
+    User::where('email', config('chat.user.email'))->delete();
+    Cache::forget('chat.user_id');
+
+    PortfolioAgent::fake(['Response']);
+
+    $this->postJson('/api/v1/chat', ['message' => 'Hello'])
+        ->assertInternalServerError();
+
+    expect(Cache::get('chat.user_id'))->toBeNull();
+});
+
 it('is rate limited', function () {
     PortfolioAgent::fake(array_fill(0, 15, 'Response'));
 

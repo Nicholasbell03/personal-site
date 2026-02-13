@@ -20,6 +20,16 @@ class ChatController extends Controller
         $userId = Cache::rememberForever('chat.user_id', function () {
             return User::where('email', config('chat.user.email'))->value('id');
         });
+
+        if (! $userId) {
+            Cache::forget('chat.user_id');
+
+            Log::error('ChatController: chatbot user not found — run ChatbotUserSeeder', [
+                'email' => config('chat.user.email'),
+            ]);
+            abort(500, 'Chat service is unavailable.');
+        }
+
         $conversationId = $request->validated('conversation_id');
         $isNew = ! $conversationId;
 
