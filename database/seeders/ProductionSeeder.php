@@ -16,6 +16,7 @@ class ProductionSeeder extends Seeder
     {
         $this->call([
             AdminUserSeeder::class,
+            ChatbotUserSeeder::class,
         ]);
     }
 }
