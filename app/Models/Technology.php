@@ -37,6 +37,8 @@ class Technology extends Model
     use HasFactory;
     use HasSlug;
 
+    public const CACHE_KEY = 'api.v1.technologies';
+
     public const MAX_FEATURED = 12;
 
     /**
@@ -81,11 +83,11 @@ class Technology extends Model
         });
 
         static::saved(function () {
-            Cache::forget('api.v1.technologies');
+            Cache::forget(self::CACHE_KEY);
         });
 
         static::deleted(function () {
-            Cache::forget('api.v1.technologies');
+            Cache::forget(self::CACHE_KEY);
         });
     }
 
@@ -99,7 +101,7 @@ class Technology extends Model
      */
     public function projects(): BelongsToMany
     {
-        return $this->belongsToMany(Project::class)->withTimestamps();
+        return $this->belongsToMany(Project::class)->using(ProjectTechnology::class)->withTimestamps();
     }
 
     /**

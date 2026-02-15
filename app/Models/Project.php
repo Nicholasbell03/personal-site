@@ -66,11 +66,11 @@ class Project extends Model
     protected static function booted(): void
     {
         static::saved(function () {
-            Cache::forget('api.v1.technologies');
+            Cache::forget(Technology::CACHE_KEY);
         });
 
         static::deleted(function () {
-            Cache::forget('api.v1.technologies');
+            Cache::forget(Technology::CACHE_KEY);
         });
     }
 
@@ -109,7 +109,7 @@ class Project extends Model
      */
     public function technologies(): BelongsToMany
     {
-        return $this->belongsToMany(Technology::class)->withTimestamps();
+        return $this->belongsToMany(Technology::class)->using(ProjectTechnology::class)->withTimestamps();
     }
 
     /**

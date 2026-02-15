@@ -14,7 +14,7 @@ class TechnologyController extends Controller
 
     public function index(): JsonResponse
     {
-        $data = Cache::remember('api.v1.technologies', self::CACHE_TTL, function () {
+        $data = Cache::remember(Technology::CACHE_KEY, self::CACHE_TTL, function () {
             $technologies = Technology::query()
                 ->featured()
                 ->withPublishedProjectsCount()
