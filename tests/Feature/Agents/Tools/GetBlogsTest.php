@@ -33,13 +33,13 @@ it('respects limit parameter', function () {
     expect($result)->toHaveCount(2);
 });
 
-it('caps limit at 10', function () {
-    Blog::factory()->published()->count(12)->create();
+it('caps limit at 5', function () {
+    Blog::factory()->published()->count(8)->create();
 
     $tool = new GetBlogs;
     $result = json_decode($tool->handle(new Request(['limit' => 20])), true);
 
-    expect($result)->toHaveCount(10);
+    expect($result)->toHaveCount(5);
 });
 
 it('returns message when no blogs found', function () {

@@ -26,7 +26,7 @@ class ShareFactory extends Factory
             'title' => $title,
             'slug' => Str::slug($title),
             'description' => fake()->paragraph(),
-            'image_url' => fake()->imageUrl(),
+            'image_url' => fake()->url().'/image.jpg',
             'site_name' => fake()->domainName(),
             'author' => fake()->name(),
             'commentary' => fake()->paragraphs(2, true),
