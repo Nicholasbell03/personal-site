@@ -105,7 +105,7 @@ class Project extends Model
     }
 
     /**
-     * @return BelongsToMany<Technology, $this>
+     * @return BelongsToMany<Technology, $this, ProjectTechnology>
      */
     public function technologies(): BelongsToMany
     {
