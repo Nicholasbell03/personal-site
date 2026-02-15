@@ -4,6 +4,7 @@ use App\Agents\Tools\SearchContent;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
+use App\Models\Technology;
 use Laravel\Ai\Tools\Request;
 
 it('returns results matching the query', function () {
@@ -42,4 +43,15 @@ it('excludes draft content', function () {
 
     expect($result)->toContain('PublishedOnly SearchTool')
         ->not->toContain('DraftOnly SearchTool');
+});
+
+it('finds projects by technology name', function () {
+    $tech = Technology::factory()->create(['name' => 'TechSearchReact']);
+    $project = Project::factory()->published()->create(['title' => 'TechSearchProject Regular Title']);
+    $project->technologies()->attach($tech);
+
+    $tool = app(SearchContent::class);
+    $result = $tool->handle(new Request(['query' => 'TechSearchReact', 'type' => 'project']));
+
+    expect($result)->toContain('TechSearchProject Regular Title');
 });

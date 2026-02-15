@@ -22,6 +22,12 @@ class TechnologyFactory extends Factory
         return [
             'name' => $name,
             'slug' => Str::slug($name),
+            'is_featured' => false,
         ];
+    }
+
+    public function featured(): static
+    {
+        return $this->state(['is_featured' => true]);
     }
 }

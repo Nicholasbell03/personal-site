@@ -6,10 +6,13 @@ use App\Http\Controllers\Api\V1\GitHubController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\ShareController;
+use App\Http\Controllers\Api\V1\TechnologyController;
 use App\Http\Middleware\ValidatePreviewToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/search', SearchController::class)->name('v1.search');
+
+Route::get('/technologies', [TechnologyController::class, 'index'])->name('v1.technologies.index');
 
 Route::post('/chat', ChatController::class)
     ->middleware('throttle:chat')

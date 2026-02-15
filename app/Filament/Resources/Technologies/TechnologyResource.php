@@ -9,6 +9,7 @@ use App\Filament\Resources\Technologies\Tables\TechnologiesTable;
 use App\Models\Technology;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
@@ -42,6 +43,9 @@ class TechnologyResource extends Resource
                             ->required()
                             ->readOnly(fn ($record) => $record !== null)
                             ->unique(ignoreRecord: true),
+                        Toggle::make('is_featured')
+                            ->label('Featured Technology')
+                            ->helperText('Show on homepage tech stack (max 12)'),
                     ])
                     ->columns(2),
             ]);
