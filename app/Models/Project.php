@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @property int $id
@@ -62,6 +63,17 @@ class Project extends Model
     use HasPublishStatus;
     use HasSlug;
 
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget(Technology::CACHE_KEY);
+        });
+
+        static::deleted(function () {
+            Cache::forget(Technology::CACHE_KEY);
+        });
+    }
+
     /**
      * @var list<string>
      */
@@ -93,11 +105,11 @@ class Project extends Model
     }
 
     /**
-     * @return BelongsToMany<Technology, $this>
+     * @return BelongsToMany<Technology, $this, ProjectTechnology>
      */
     public function technologies(): BelongsToMany
     {
-        return $this->belongsToMany(Technology::class)->withTimestamps();
+        return $this->belongsToMany(Technology::class)->using(ProjectTechnology::class)->withTimestamps();
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
+use App\Models\Technology;
 
 it('returns 422 when query is missing', function () {
     $this->getJson('/api/v1/search')
@@ -273,4 +274,17 @@ it('searches across multiple fields for shares', function () {
     $response->assertOk();
 
     expect($response->json('data.shares'))->toHaveCount(1);
+});
+
+it('finds projects by technology name', function () {
+    $tech = Technology::factory()->create(['name' => 'TechApiSearchVue']);
+    $project = Project::factory()->published()->create(['title' => 'TechApiProject Plain Title']);
+    $project->technologies()->attach($tech);
+
+    $response = $this->getJson('/api/v1/search?q=TechApiSearchVue&type=project');
+
+    $response->assertOk();
+
+    expect($response->json('data.projects'))->toHaveCount(1)
+        ->and($response->json('data.projects.0.title'))->toBe('TechApiProject Plain Title');
 });

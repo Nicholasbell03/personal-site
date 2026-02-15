@@ -8,6 +8,7 @@ use App\Agents\Tools\GetCVDetail;
 use App\Agents\Tools\GetProjectDetail;
 use App\Agents\Tools\GetProjects;
 use App\Agents\Tools\GetShares;
+use App\Agents\Tools\GetTechnologies;
 use App\Agents\Tools\SearchContent;
 use App\Enums\UserContextKey;
 use App\Models\UserContext;
@@ -66,6 +67,10 @@ class PortfolioAgent implements Agent, Conversational, HasTools
           * Use `GetBlogs` or `GetBlogDetail` when the user asks about blog posts.
           * Use `GetProjects` or `GetProjectDetail` when the user asks about projects.
           * Use `GetShares` when the user asks about shared links, resources, or content he has curated.
+          * Use `GetTechnologies` when the user asks about Nick's tech stack, skills, or whether he has experience with a specific technology.
+          * When a technology exists in the list but has zero projects, mention Nick works with it but hasn't published any projects using it yet.
+          * When a technology is NOT in the list, say Nick hasn't recorded working with it yet — do not say he definitely doesn't use it.
+          * When a technology has projects, follow up with `GetProjects` filtered by that technology to provide specific project details.
         - If a tool returns no results, politely inform the user and suggest an alternative (e.g., "I couldn't find a project by that name, but I can list his most recent projects if you'd like.").
         - NEVER include Markdown links in your response text. Content cards are automatically displayed alongside your message for any blog posts, projects, or shares you reference — the user can click those to navigate. Including links in your text is redundant and clutters the response.
 
@@ -111,6 +116,7 @@ class PortfolioAgent implements Agent, Conversational, HasTools
             app(GetBlogDetail::class),
             app(GetProjectDetail::class),
             app(GetCVDetail::class),
+            app(GetTechnologies::class),
         ];
     }
 

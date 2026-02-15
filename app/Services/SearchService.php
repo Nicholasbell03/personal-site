@@ -67,9 +67,15 @@ class SearchService
         $builder = Project::query()->published()->with('technologies');
         $fields = ['title', 'description', 'long_description'];
 
+        $likeOperator = $this->isPostgres($builder) ? 'ILIKE' : 'LIKE';
+
+        $technologyMatcher = function (Builder $inner, string $term) use ($likeOperator): void {
+            $inner->orWhereHas('technologies', fn ($q) => $q->where('name', $likeOperator, "%{$term}%"));
+        };
+
         $projects = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
-            : $this->likeSearch($builder, $query, $fields);
+            ? $this->hybridSearch($builder, $query, $fields, $technologyMatcher)
+            : $this->likeSearch($builder, $query, $fields, $technologyMatcher);
 
         return ProjectSummaryResource::collection($projects)->resolve();
     }
@@ -123,8 +129,9 @@ class SearchService
      *
      * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
+     * @param  (\Closure(Builder<*>, string): void)|null  $additionalTermMatcher
      */
-    private function keywordSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    private function keywordSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null): Collection
     {
         $terms = collect(preg_split('/\s+/', trim($query)))
             ->filter()
@@ -135,11 +142,14 @@ class SearchService
         }
 
         return $queryBuilder
-            ->where(function ($q) use ($terms, $fields) {
+            ->where(function ($q) use ($terms, $fields, $additionalTermMatcher) {
                 foreach ($terms as $term) {
-                    $q->where(function ($inner) use ($term, $fields) {
+                    $q->where(function ($inner) use ($term, $fields, $additionalTermMatcher) {
                         foreach ($fields as $field) {
                             $inner->orWhere($field, 'ILIKE', "%{$term}%");
+                        }
+                        if ($additionalTermMatcher) {
+                            $additionalTermMatcher($inner, $term);
                         }
                     });
                 }
@@ -155,11 +165,12 @@ class SearchService
      *
      * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
+     * @param  (\Closure(Builder<*>, string): void)|null  $additionalTermMatcher
      */
-    private function hybridSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    private function hybridSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null): Collection
     {
         $vectorResults = $this->vectorSearch(clone $queryBuilder, $query);
-        $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields);
+        $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields, $additionalTermMatcher);
 
         $k = 60;
         $scores = [];
@@ -191,8 +202,9 @@ class SearchService
      *
      * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
+     * @param  (\Closure(Builder<*>, string): void)|null  $additionalTermMatcher
      */
-    private function likeSearch(Builder $queryBuilder, string $query, array $fields): Collection
+    private function likeSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null): Collection
     {
         $terms = collect(preg_split('/\s+/', trim($query)))
             ->filter()
@@ -203,11 +215,14 @@ class SearchService
         }
 
         return $queryBuilder
-            ->where(function ($q) use ($terms, $fields) {
+            ->where(function ($q) use ($terms, $fields, $additionalTermMatcher) {
                 foreach ($terms as $term) {
-                    $q->where(function ($inner) use ($term, $fields) {
+                    $q->where(function ($inner) use ($term, $fields, $additionalTermMatcher) {
                         foreach ($fields as $field) {
                             $inner->orWhere($field, 'LIKE', "%{$term}%");
+                        }
+                        if ($additionalTermMatcher) {
+                            $additionalTermMatcher($inner, $term);
                         }
                     });
                 }

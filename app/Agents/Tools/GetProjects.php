@@ -12,18 +12,25 @@ class GetProjects implements Tool
 {
     public function description(): string
     {
-        return 'Get a list of recent projects sorted by date. Use this when the user wants to browse or list projects (e.g. "What has Nick built?"). Do NOT use this to search for projects about a specific topic — use SearchContent instead.';
+        return 'Get a list of recent projects sorted by date, optionally filtered by technology. Use this when the user wants to browse or list projects (e.g. "What has Nick built?"). Do NOT use this to search for projects about a specific topic — use SearchContent instead.';
     }
 
     public function handle(Request $request): string
     {
         $limit = min($request->integer('limit', 3), 5);
         $featured = $request->boolean('featured');
+        $technology = $request->string('technology')->toString();
 
         $query = Project::query()->published()->with('technologies');
 
         if ($featured) {
             $query->featured();
+        }
+
+        if ($technology !== '') {
+            $technologyLower = strtolower($technology);
+            $query->whereHas('technologies', fn ($q) => $q->where('slug', $technologyLower)
+                ->orWhereRaw('LOWER(name) LIKE ?', ["%{$technologyLower}%"]));
         }
 
         $projects = $query->latestPublished()->limit($limit)->get();
@@ -44,6 +51,9 @@ class GetProjects implements Tool
             'featured' => $schema
                 ->boolean()
                 ->description('Only return featured projects.'),
+            'technology' => $schema
+                ->string()
+                ->description('Filter by technology slug or name (e.g. "react", "Laravel").'),
         ];
     }
 }

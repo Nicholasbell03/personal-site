@@ -2,6 +2,7 @@
 
 use App\Agents\Tools\GetProjects;
 use App\Models\Project;
+use App\Models\Technology;
 use Laravel\Ai\Tools\Request;
 
 it('returns published projects', function () {
@@ -49,4 +50,32 @@ it('returns message when no projects found', function () {
     $result = $tool->handle(new Request([]));
 
     expect($result)->toBe('No projects found.');
+});
+
+it('filters by technology slug', function () {
+    $tech = Technology::factory()->create(['name' => 'React', 'slug' => 'react']);
+    $matching = Project::factory()->published()->create(['title' => 'TechFilter React Project']);
+    $matching->technologies()->attach($tech);
+
+    Project::factory()->published()->create(['title' => 'TechFilter Other Project']);
+
+    $tool = new GetProjects;
+    $result = $tool->handle(new Request(['technology' => 'react']));
+
+    expect($result)->toContain('TechFilter React Project')
+        ->not->toContain('TechFilter Other Project');
+});
+
+it('filters by technology name', function () {
+    $tech = Technology::factory()->create(['name' => 'Laravel', 'slug' => 'laravel']);
+    $matching = Project::factory()->published()->create(['title' => 'TechName Laravel Project']);
+    $matching->technologies()->attach($tech);
+
+    Project::factory()->published()->create(['title' => 'TechName Unrelated Project']);
+
+    $tool = new GetProjects;
+    $result = $tool->handle(new Request(['technology' => 'Laravel']));
+
+    expect($result)->toContain('TechName Laravel Project')
+        ->not->toContain('TechName Unrelated Project');
 });
