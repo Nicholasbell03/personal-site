@@ -12,12 +12,12 @@ class GetBlogs implements Tool
 {
     public function description(): string
     {
-        return 'Get a list of recent published blog posts. Use this to answer questions about what Nick has written about.';
+        return 'Get a list of recent blog posts sorted by date. Use this when the user wants to browse or list posts (e.g. "Show me Nick\'s latest posts"). Do NOT use this to search for posts about a specific topic — use SearchContent instead.';
     }
 
     public function handle(Request $request): string
     {
-        $limit = min($request->integer('limit', 5), 10);
+        $limit = min($request->integer('limit', 3), 5);
 
         $blogs = Blog::query()
             ->published()
@@ -37,7 +37,7 @@ class GetBlogs implements Tool
         return [
             'limit' => $schema
                 ->integer()
-                ->description('Number of blog posts to return (1-10, default 5).'),
+                ->description('Number of blog posts to return (1-5, default 3).'),
         ];
     }
 }

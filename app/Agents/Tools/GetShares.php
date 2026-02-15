@@ -12,12 +12,12 @@ class GetShares implements Tool
 {
     public function description(): string
     {
-        return 'Get a list of recently shared links and content. These are URLs Nick has bookmarked or shared with commentary.';
+        return 'Get a list of recent shares sorted by date. Shares are web articles, YouTube videos, and X posts that Nick has curated with his own commentary. Use this when the user wants to browse what Nick has shared recently. Do NOT use this to search for shares about a specific topic — use SearchContent instead.';
     }
 
     public function handle(Request $request): string
     {
-        $limit = min($request->integer('limit', 5), 10);
+        $limit = min($request->integer('limit', 3), 5);
 
         $shares = Share::query()
             ->latest()
@@ -36,7 +36,7 @@ class GetShares implements Tool
         return [
             'limit' => $schema
                 ->integer()
-                ->description('Number of shares to return (1-10, default 5).'),
+                ->description('Number of shares to return (1-5, default 3).'),
         ];
     }
 }

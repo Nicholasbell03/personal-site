@@ -12,12 +12,12 @@ class GetProjects implements Tool
 {
     public function description(): string
     {
-        return 'Get a list of published projects. Use this to answer questions about what Nick has built or worked on.';
+        return 'Get a list of recent projects sorted by date. Use this when the user wants to browse or list projects (e.g. "What has Nick built?"). Do NOT use this to search for projects about a specific topic — use SearchContent instead.';
     }
 
     public function handle(Request $request): string
     {
-        $limit = min($request->integer('limit', 5), 10);
+        $limit = min($request->integer('limit', 3), 5);
         $featured = $request->boolean('featured');
 
         $query = Project::query()->published()->with('technologies');
@@ -40,7 +40,7 @@ class GetProjects implements Tool
         return [
             'limit' => $schema
                 ->integer()
-                ->description('Number of projects to return (1-10, default 5).'),
+                ->description('Number of projects to return (1-5, default 3).'),
             'featured' => $schema
                 ->boolean()
                 ->description('Only return featured projects.'),
