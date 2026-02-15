@@ -32,10 +32,10 @@ class TechnologiesTable
                                 ->where('id', '!=', $record->id)
                                 ->count();
 
-                            if ($count >= 12) {
+                            if ($count >= Technology::MAX_FEATURED) {
                                 Notification::make()
                                     ->danger()
-                                    ->title('Maximum of 12 featured technologies allowed.')
+                                    ->title(Technology::maxFeaturedMessage())
                                     ->send();
 
                                 return false;

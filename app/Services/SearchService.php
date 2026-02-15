@@ -67,8 +67,10 @@ class SearchService
         $builder = Project::query()->published()->with('technologies');
         $fields = ['title', 'description', 'long_description'];
 
-        $technologyMatcher = function (Builder $inner, string $term): void {
-            $inner->orWhereHas('technologies', fn ($q) => $q->where('name', 'LIKE', "%{$term}%"));
+        $likeOperator = $this->isPostgres($builder) ? 'ILIKE' : 'LIKE';
+
+        $technologyMatcher = function (Builder $inner, string $term) use ($likeOperator): void {
+            $inner->orWhereHas('technologies', fn ($q) => $q->where('name', $likeOperator, "%{$term}%"));
         };
 
         $projects = $this->isPostgres($builder)

@@ -37,7 +37,7 @@ class Technology extends Model
     use HasFactory;
     use HasSlug;
 
-    private const MAX_FEATURED = 12;
+    public const MAX_FEATURED = 12;
 
     /**
      * The attribute to generate the slug from.
@@ -74,7 +74,7 @@ class Technology extends Model
 
                 if ($count >= self::MAX_FEATURED) {
                     throw ValidationException::withMessages([
-                        'is_featured' => 'Maximum of '.self::MAX_FEATURED.' featured technologies allowed.',
+                        'is_featured' => self::maxFeaturedMessage(),
                     ]);
                 }
             }
@@ -87,6 +87,11 @@ class Technology extends Model
         static::deleted(function () {
             Cache::forget('api.v1.technologies');
         });
+    }
+
+    public static function maxFeaturedMessage(): string
+    {
+        return 'Maximum of '.self::MAX_FEATURED.' featured technologies allowed.';
     }
 
     /**
@@ -104,5 +109,14 @@ class Technology extends Model
     public function scopeFeatured(Builder $query): Builder
     {
         return $query->where('is_featured', true);
+    }
+
+    /**
+     * @param  Builder<Technology>  $query
+     * @return Builder<Technology>
+     */
+    public function scopeWithPublishedProjectsCount(Builder $query): Builder
+    {
+        return $query->withCount(['projects' => fn ($q) => $q->published()]);
     }
 }

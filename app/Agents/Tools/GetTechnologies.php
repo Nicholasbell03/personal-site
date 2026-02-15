@@ -16,7 +16,7 @@ class GetTechnologies implements Tool
     public function handle(Request $request): string
     {
         $technologies = Technology::query()
-            ->withCount(['projects' => fn ($q) => $q->published()])
+            ->withPublishedProjectsCount()
             ->orderByDesc('projects_count')
             ->get();
 

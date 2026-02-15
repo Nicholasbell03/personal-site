@@ -28,8 +28,9 @@ class GetProjects implements Tool
         }
 
         if ($technology !== '') {
-            $query->whereHas('technologies', fn ($q) => $q->where('slug', $technology)
-                ->orWhere('name', 'LIKE', "%{$technology}%"));
+            $technologyLower = strtolower($technology);
+            $query->whereHas('technologies', fn ($q) => $q->where('slug', $technologyLower)
+                ->orWhereRaw('LOWER(name) LIKE ?', ["%{$technologyLower}%"]));
         }
 
         $projects = $query->latestPublished()->limit($limit)->get();

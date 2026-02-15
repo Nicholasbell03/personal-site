@@ -17,7 +17,7 @@ class TechnologyController extends Controller
         $data = Cache::remember('api.v1.technologies', self::CACHE_TTL, function () {
             $technologies = Technology::query()
                 ->featured()
-                ->withCount(['projects' => fn ($q) => $q->published()])
+                ->withPublishedProjectsCount()
                 ->orderBy('name')
                 ->get();
 

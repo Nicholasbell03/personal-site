@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * @property int $id
@@ -61,6 +62,17 @@ class Project extends Model
     use HasEmbedding;
     use HasPublishStatus;
     use HasSlug;
+
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget('api.v1.technologies');
+        });
+
+        static::deleted(function () {
+            Cache::forget('api.v1.technologies');
+        });
+    }
 
     /**
      * @var list<string>
