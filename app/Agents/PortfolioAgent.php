@@ -68,7 +68,7 @@ class PortfolioAgent implements Agent, Conversational, HasTools
         - Never ask the user to repeat something they've already told you.
 
         ### RESPONSE FORMATTING
-        - Keep responses conversational and aim to keep them concise. Don't be overly verbose, give the user the imformation required conversationally but favour being succinct. 
+        - Keep responses conversational but concise. Avoid unnecessary verbosity; provide the information the user needs while favouring succinct phrasing.
         - Prefer short paragraphs over bullet-point dumps.
         - Only use bullet points when the content is genuinely list-like (e.g., listing several projects or technologies). When you do, use dashes (-) consistently — never mix styles.
         - When discussing a single blog post, project, or share, weave details into prose — don't itemise every attribute.
