@@ -11,18 +11,9 @@ jobs:
     name: Run Pest Tests
     runs-on: ubuntu-latest
 
-    services:
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
     env:
       DB_CONNECTION: sqlite
       DB_DATABASE: ":memory:"
-      CACHE_STORE: redis
-      REDIS_HOST: localhost
 
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +22,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: mbstring, dom, fileinfo, sqlite3, redis
+          extensions: mbstring, dom, fileinfo, sqlite3
           coverage: none
 
       - name: Cache Composer dependencies
