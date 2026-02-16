@@ -6,10 +6,12 @@ use App\Agents\PortfolioAgent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ChatRequest;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\Messages\Message;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -107,6 +109,30 @@ class ChatController extends Controller
             $httpResponse->headers->set('X-Conversation-Id', $conversationId);
 
             return $httpResponse;
+        } catch (RateLimitedException $e) {
+            Log::warning('ChatController: AI provider rate limited', [
+                'conversation_id' => $conversationId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->sseError(
+                'The AI service is currently rate limited. Please try again in a moment.',
+                $conversationId,
+                'rate_limited',
+                429,
+            );
+        } catch (ConnectionException $e) {
+            Log::warning('ChatController: AI provider connection failed', [
+                'conversation_id' => $conversationId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->sseError(
+                'The AI service is temporarily unavailable. Please try again shortly.',
+                $conversationId,
+                'unavailable',
+                503,
+            );
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
                 'conversation_id' => $conversationId,
@@ -114,7 +140,47 @@ class ChatController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            throw $e;
+            if (! app()->isProduction()) {
+                throw $e;
+            }
+
+            return $this->sseError(
+                'Something went wrong. Please try again.',
+                $conversationId,
+                'internal_error',
+                500,
+            );
         }
+    }
+
+    /**
+     * Return an SSE-formatted error response so the frontend can display
+     * a meaningful message instead of hanging or showing a generic 500.
+     *
+     * The HTTP status allows monitoring and load balancers to detect failures,
+     * while the SSE body keeps the frontend's event-stream parser happy.
+     */
+    private function sseError(string $message, string $conversationId, string $code, int $status): Response
+    {
+        return response()->stream(function () use ($message, $code) {
+            $event = json_encode([
+                'type' => 'error',
+                'code' => $code,
+                'message' => $message,
+            ]);
+            echo "data: {$event}\n\n";
+            echo "data: [DONE]\n\n";
+
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            flush();
+        }, $status, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+            'X-Conversation-Id' => $conversationId,
+            'X-Chat-Error' => 'true',
+        ]);
     }
 }
