@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
-    User::factory()->create(['email' => config('chat.user.email')]);
     Cache::forget('chat.user_id');
 });
 
