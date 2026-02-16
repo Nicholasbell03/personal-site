@@ -11,6 +11,7 @@ use App\Models\Share;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Embeddings;
 
@@ -28,7 +29,8 @@ class SearchService
      */
     public function search(string $query, string $type = 'all'): array
     {
-        $embedding = $this->embedQuery($query);
+        $usesPostgres = $this->isDefaultConnectionPostgres();
+        $embedding = $usesPostgres ? $this->embedQuery($query) : null;
 
         $results = [];
 
@@ -110,7 +112,7 @@ class SearchService
      * @param  Builder<*>  $queryBuilder
      * @param  list<float>|null  $embedding
      */
-    private function vectorSearch(Builder $queryBuilder, string $query, ?array $embedding = null): Collection
+    private function vectorSearch(Builder $queryBuilder, ?array $embedding): Collection
     {
         if ($embedding === null) {
             return collect();
@@ -124,7 +126,6 @@ class SearchService
                 ->get();
         } catch (\Throwable $e) {
             Log::error('SearchService: vector search failed', [
-                'query' => $query,
                 'exception' => $e,
             ]);
 
@@ -180,7 +181,7 @@ class SearchService
      */
     private function hybridSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null, ?array $embedding = null): Collection
     {
-        $vectorResults = $this->vectorSearch(clone $queryBuilder, $query, $embedding);
+        $vectorResults = $this->vectorSearch(clone $queryBuilder, $embedding);
         $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields, $additionalTermMatcher);
 
         $k = 60;
@@ -259,12 +260,18 @@ class SearchService
         }
 
         try {
-            $response = Embeddings::for([$trimmed])
-                ->dimensions((int) config('services.embeddings.dimensions'))
-                ->generate(
-                    config('services.embeddings.provider'),
-                    config('services.embeddings.model'),
-                );
+            $request = Embeddings::for([$trimmed]);
+
+            $dimensions = (int) config('services.embeddings.dimensions');
+
+            if ($dimensions > 0) {
+                $request->dimensions($dimensions);
+            }
+
+            $response = $request->generate(
+                config('services.embeddings.provider'),
+                config('services.embeddings.model'),
+            );
 
             return $response->embeddings[0];
         } catch (\Throwable $e) {
@@ -285,5 +292,10 @@ class SearchService
         $connection = $queryBuilder->getConnection();
 
         return $connection instanceof Connection && $connection->getDriverName() === 'pgsql';
+    }
+
+    private function isDefaultConnectionPostgres(): bool
+    {
+        return DB::connection()->getDriverName() === 'pgsql';
     }
 }
