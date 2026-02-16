@@ -14,21 +14,15 @@ use App\Enums\UserContextKey;
 use App\Models\UserContext;
 use Laravel\Ai\Attributes\MaxSteps;
 use Laravel\Ai\Attributes\MaxTokens;
-use Laravel\Ai\Attributes\Model;
-use Laravel\Ai\Attributes\Provider;
 use Laravel\Ai\Attributes\Temperature;
-use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
 
-#[Provider('gemini')]
-#[Model('gemini-3-flash-preview')]
 #[MaxSteps(7)]
 #[MaxTokens(2048)]
 #[Temperature(0.6)]
-#[Timeout(15)]
 class PortfolioAgent implements Agent, Conversational, HasTools
 {
     use Promptable;
@@ -39,6 +33,21 @@ class PortfolioAgent implements Agent, Conversational, HasTools
     public function __construct(
         protected iterable $conversationMessages = [],
     ) {}
+
+    public function provider(): string
+    {
+        return config('agent.portfolio.provider');
+    }
+
+    public function model(): string
+    {
+        return config('agent.portfolio.model');
+    }
+
+    public function timeout(): int
+    {
+        return config('agent.portfolio.timeout');
+    }
 
     public function instructions(): string
     {
