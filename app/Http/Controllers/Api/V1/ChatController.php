@@ -109,17 +109,29 @@ class ChatController extends Controller
             $httpResponse->headers->set('X-Conversation-Id', $conversationId);
 
             return $httpResponse;
-        } catch (ConnectionException|RateLimitedException $e) {
-            Log::warning('ChatController: AI provider unavailable', [
+        } catch (RateLimitedException $e) {
+            Log::warning('ChatController: AI provider rate limited', [
                 'conversation_id' => $conversationId,
                 'exception' => $e->getMessage(),
             ]);
 
             return $this->sseError(
-                $e instanceof RateLimitedException
-                    ? 'The AI service is currently rate limited. Please try again in a moment.'
-                    : 'The AI service is temporarily unavailable. Please try again shortly.',
+                'The AI service is currently rate limited. Please try again in a moment.',
                 $conversationId,
+                'rate_limited',
+                429,
+            );
+        } catch (ConnectionException $e) {
+            Log::warning('ChatController: AI provider connection failed', [
+                'conversation_id' => $conversationId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->sseError(
+                'The AI service is temporarily unavailable. Please try again shortly.',
+                $conversationId,
+                'unavailable',
+                503,
             );
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
@@ -128,9 +140,15 @@ class ChatController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            if (! app()->isProduction()) {
+                throw $e;
+            }
+
             return $this->sseError(
                 'Something went wrong. Please try again.',
                 $conversationId,
+                'internal_error',
+                500,
             );
         }
     }
@@ -138,23 +156,31 @@ class ChatController extends Controller
     /**
      * Return an SSE-formatted error response so the frontend can display
      * a meaningful message instead of hanging or showing a generic 500.
+     *
+     * The HTTP status allows monitoring and load balancers to detect failures,
+     * while the SSE body keeps the frontend's event-stream parser happy.
      */
-    private function sseError(string $message, string $conversationId): Response
+    private function sseError(string $message, string $conversationId, string $code, int $status): Response
     {
-        return response()->stream(function () use ($message) {
-            $event = json_encode(['type' => 'error', 'message' => $message]);
+        return response()->stream(function () use ($message, $code) {
+            $event = json_encode([
+                'type' => 'error',
+                'code' => $code,
+                'message' => $message,
+            ]);
             echo "data: {$event}\n\n";
             echo "data: [DONE]\n\n";
 
-            if (ob_get_level()) {
-                ob_flush();
+            while (ob_get_level() > 0) {
+                ob_end_flush();
             }
             flush();
-        }, 200, [
+        }, $status, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'X-Accel-Buffering' => 'no',
             'X-Conversation-Id' => $conversationId,
+            'X-Chat-Error' => 'true',
         ]);
     }
 }
