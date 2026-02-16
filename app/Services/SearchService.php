@@ -11,7 +11,9 @@ use App\Models\Share;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Embeddings;
 
 class SearchService
 {
@@ -27,42 +29,47 @@ class SearchService
      */
     public function search(string $query, string $type = 'all'): array
     {
+        $usesPostgres = $this->isDefaultConnectionPostgres();
+        $embedding = $usesPostgres ? $this->embedQuery($query) : null;
+
         $results = [];
 
         if ($type === 'all' || $type === 'blog') {
-            $results['blogs'] = $this->searchBlogs($query);
+            $results['blogs'] = $this->searchBlogs($query, $embedding);
         }
 
         if ($type === 'all' || $type === 'project') {
-            $results['projects'] = $this->searchProjects($query);
+            $results['projects'] = $this->searchProjects($query, $embedding);
         }
 
         if ($type === 'all' || $type === 'share') {
-            $results['shares'] = $this->searchShares($query);
+            $results['shares'] = $this->searchShares($query, $embedding);
         }
 
         return $results;
     }
 
     /**
+     * @param  list<float>|null  $embedding
      * @return list<array<string, mixed>>
      */
-    private function searchBlogs(string $query): array
+    private function searchBlogs(string $query, ?array $embedding): array
     {
         $builder = Blog::query()->published();
         $fields = ['title', 'excerpt', 'content'];
 
         $blogs = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
+            ? $this->hybridSearch($builder, $query, $fields, embedding: $embedding)
             : $this->likeSearch($builder, $query, $fields);
 
         return BlogSummaryResource::collection($blogs)->resolve();
     }
 
     /**
+     * @param  list<float>|null  $embedding
      * @return list<array<string, mixed>>
      */
-    private function searchProjects(string $query): array
+    private function searchProjects(string $query, ?array $embedding): array
     {
         $builder = Project::query()->published()->with('technologies');
         $fields = ['title', 'description', 'long_description'];
@@ -74,22 +81,23 @@ class SearchService
         };
 
         $projects = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields, $technologyMatcher)
+            ? $this->hybridSearch($builder, $query, $fields, $technologyMatcher, $embedding)
             : $this->likeSearch($builder, $query, $fields, $technologyMatcher);
 
         return ProjectSummaryResource::collection($projects)->resolve();
     }
 
     /**
+     * @param  list<float>|null  $embedding
      * @return list<array<string, mixed>>
      */
-    private function searchShares(string $query): array
+    private function searchShares(string $query, ?array $embedding): array
     {
         $builder = Share::query();
         $fields = ['title', 'description', 'commentary', 'url'];
 
         $shares = $this->isPostgres($builder)
-            ? $this->hybridSearch($builder, $query, $fields)
+            ? $this->hybridSearch($builder, $query, $fields, embedding: $embedding)
             : $this->likeSearch($builder, $query, $fields);
 
         return ShareSummaryResource::collection($shares)->resolve();
@@ -98,23 +106,26 @@ class SearchService
     /**
      * Semantic search using pgvector cosine similarity.
      *
-     * Embeds the query text via the configured AI provider, then finds
-     * the nearest neighbours by cosine distance. Only returns results
-     * that have an embedding and meet the minimum similarity threshold.
+     * Accepts a pre-computed embedding vector to avoid redundant API calls
+     * when searching across multiple content types.
      *
      * @param  Builder<*>  $queryBuilder
+     * @param  list<float>|null  $embedding
      */
-    private function vectorSearch(Builder $queryBuilder, string $query): Collection
+    private function vectorSearch(Builder $queryBuilder, ?array $embedding): Collection
     {
+        if ($embedding === null) {
+            return collect();
+        }
+
         try {
             return $queryBuilder
                 ->whereNotNull('embedding')
-                ->whereVectorSimilarTo('embedding', $query, self::MIN_SIMILARITY)
+                ->whereVectorSimilarTo('embedding', $embedding, self::MIN_SIMILARITY)
                 ->limit(self::RESULTS_PER_TYPE)
                 ->get();
         } catch (\Throwable $e) {
             Log::error('SearchService: vector search failed', [
-                'query' => $query,
                 'exception' => $e,
             ]);
 
@@ -166,10 +177,11 @@ class SearchService
      * @param  Builder<*>  $queryBuilder
      * @param  list<string>  $fields
      * @param  (\Closure(Builder<*>, string): void)|null  $additionalTermMatcher
+     * @param  list<float>|null  $embedding
      */
-    private function hybridSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null): Collection
+    private function hybridSearch(Builder $queryBuilder, string $query, array $fields, ?\Closure $additionalTermMatcher = null, ?array $embedding = null): Collection
     {
-        $vectorResults = $this->vectorSearch(clone $queryBuilder, $query);
+        $vectorResults = $this->vectorSearch(clone $queryBuilder, $embedding);
         $keywordResults = $this->keywordSearch(clone $queryBuilder, $query, $fields, $additionalTermMatcher);
 
         $k = 60;
@@ -232,6 +244,47 @@ class SearchService
     }
 
     /**
+     * Generate an embedding vector for the search query.
+     *
+     * Uses the same provider and model as EmbeddingService to ensure
+     * consistent vector dimensions and similarity scoring.
+     *
+     * @return list<float>|null
+     */
+    private function embedQuery(string $query): ?array
+    {
+        $trimmed = trim($query);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        try {
+            $request = Embeddings::for([$trimmed]);
+
+            $dimensions = (int) config('services.embeddings.dimensions');
+
+            if ($dimensions > 0) {
+                $request->dimensions($dimensions);
+            }
+
+            $response = $request->generate(
+                config('services.embeddings.provider'),
+                config('services.embeddings.model'),
+            );
+
+            return $response->embeddings[0];
+        } catch (\Throwable $e) {
+            Log::error('SearchService: query embedding failed', [
+                'query' => $trimmed,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * @param  Builder<*>  $queryBuilder
      */
     private function isPostgres(Builder $queryBuilder): bool
@@ -239,5 +292,10 @@ class SearchService
         $connection = $queryBuilder->getConnection();
 
         return $connection instanceof Connection && $connection->getDriverName() === 'pgsql';
+    }
+
+    private function isDefaultConnectionPostgres(): bool
+    {
+        return DB::connection()->getDriverName() === 'pgsql';
     }
 }
