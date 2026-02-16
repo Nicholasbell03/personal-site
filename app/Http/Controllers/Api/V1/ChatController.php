@@ -6,10 +6,12 @@ use App\Agents\PortfolioAgent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ChatRequest;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\Messages\Message;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -107,6 +109,18 @@ class ChatController extends Controller
             $httpResponse->headers->set('X-Conversation-Id', $conversationId);
 
             return $httpResponse;
+        } catch (ConnectionException|RateLimitedException $e) {
+            Log::warning('ChatController: AI provider unavailable', [
+                'conversation_id' => $conversationId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->sseError(
+                $e instanceof RateLimitedException
+                    ? 'The AI service is currently rate limited. Please try again in a moment.'
+                    : 'The AI service is temporarily unavailable. Please try again shortly.',
+                $conversationId,
+            );
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
                 'conversation_id' => $conversationId,
@@ -114,7 +128,33 @@ class ChatController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            throw $e;
+            return $this->sseError(
+                'Something went wrong. Please try again.',
+                $conversationId,
+            );
         }
+    }
+
+    /**
+     * Return an SSE-formatted error response so the frontend can display
+     * a meaningful message instead of hanging or showing a generic 500.
+     */
+    private function sseError(string $message, string $conversationId): Response
+    {
+        return response()->stream(function () use ($message) {
+            $event = json_encode(['type' => 'error', 'message' => $message]);
+            echo "data: {$event}\n\n";
+            echo "data: [DONE]\n\n";
+
+            if (ob_get_level()) {
+                ob_flush();
+            }
+            flush();
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+            'X-Conversation-Id' => $conversationId,
+        ]);
     }
 }

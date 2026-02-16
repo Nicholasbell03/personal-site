@@ -17,6 +17,7 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Model;
 use Laravel\Ai\Attributes\Provider;
 use Laravel\Ai\Attributes\Temperature;
+use Laravel\Ai\Attributes\Timeout;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
@@ -27,6 +28,7 @@ use Laravel\Ai\Promptable;
 #[MaxSteps(7)]
 #[MaxTokens(2048)]
 #[Temperature(0.6)]
+#[Timeout(15)]
 class PortfolioAgent implements Agent, Conversational, HasTools
 {
     use Promptable;
