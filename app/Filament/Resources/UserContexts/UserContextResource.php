@@ -8,8 +8,6 @@ use App\Filament\Resources\UserContexts\Pages\EditUserContext;
 use App\Filament\Resources\UserContexts\Pages\ListUserContexts;
 use App\Models\UserContext;
 use BackedEnum;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -56,11 +54,7 @@ class UserContextResource extends Resource
             ->recordActions([
                 EditAction::make(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->toolbarActions([]);
     }
 
     public static function getPages(): array
