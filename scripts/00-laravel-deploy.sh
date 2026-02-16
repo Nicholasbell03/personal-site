@@ -22,3 +22,7 @@ php artisan view:cache
 
 echo "Publishing Log Viewer assets..."
 php artisan vendor:publish --tag=log-viewer-assets --force
+
+echo "Fixing storage permissions..."
+chown -R www-data:www-data /var/www/html/storage
+chmod -R 775 /var/www/html/storage
