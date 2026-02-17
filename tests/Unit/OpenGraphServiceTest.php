@@ -32,6 +32,8 @@ it('detects linkedin urls', function (string $url) {
     'linkedin.com pulse' => 'https://linkedin.com/pulse/some-article-title',
     'linkedin.com feed' => 'https://www.linkedin.com/feed/update/urn:li:activity:12345',
     'linkedin.com profile' => 'https://www.linkedin.com/in/johndoe',
+    'mobile linkedin' => 'https://m.linkedin.com/posts/someone-some-post-12345',
+    'lnkd.in short link' => 'https://lnkd.in/abc123',
 ]);
 
 it('detects webpage urls', function (string $url) {

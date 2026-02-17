@@ -107,7 +107,7 @@ class OpenGraphService
             return SourceType::XPost;
         }
 
-        if ($host === 'linkedin.com') {
+        if (in_array($host, ['linkedin.com', 'm.linkedin.com', 'lnkd.in'])) {
             return SourceType::LinkedIn;
         }
 
