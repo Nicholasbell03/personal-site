@@ -107,6 +107,10 @@ class OpenGraphService
             return SourceType::XPost;
         }
 
+        if ($host === 'linkedin.com') {
+            return SourceType::LinkedIn;
+        }
+
         return SourceType::Webpage;
     }
 
@@ -279,6 +283,16 @@ class OpenGraphService
             }
 
             return null;
+        }
+
+        if ($sourceType === SourceType::LinkedIn) {
+            $path = parse_url($url, PHP_URL_PATH);
+
+            if ($path && preg_match('#/in/([^/]+)#', $path, $matches)) {
+                return str_replace('-', ' ', $matches[1]);
+            }
+
+            return $ogTags['article:author'] ?? null;
         }
 
         return $ogTags['article:author'] ?? null;
