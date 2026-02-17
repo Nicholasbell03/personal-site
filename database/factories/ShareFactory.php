@@ -56,4 +56,16 @@ class ShareFactory extends Factory
             'embed_data' => ['tweet_id' => fake()->numerify('####################')],
         ]);
     }
+
+    public function linkedin(): static
+    {
+        $slug = fake()->slug(3);
+
+        return $this->state(fn (array $attributes) => [
+            'url' => 'https://www.linkedin.com/posts/'.$slug,
+            'source_type' => SourceType::LinkedIn,
+            'author' => fake()->name(),
+            'embed_data' => null,
+        ]);
+    }
 }

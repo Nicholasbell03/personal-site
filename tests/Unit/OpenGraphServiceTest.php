@@ -24,6 +24,18 @@ it('detects x/twitter urls', function (string $url) {
     'mobile twitter' => 'https://mobile.twitter.com/user/status/123456',
 ]);
 
+it('detects linkedin urls', function (string $url) {
+    expect($this->service->detectSourceType($url))->toBe(SourceType::LinkedIn);
+})->with([
+    'linkedin.com post' => 'https://linkedin.com/posts/someone-some-post-12345',
+    'www.linkedin.com post' => 'https://www.linkedin.com/posts/someone-some-post-12345',
+    'linkedin.com pulse' => 'https://linkedin.com/pulse/some-article-title',
+    'linkedin.com feed' => 'https://www.linkedin.com/feed/update/urn:li:activity:12345',
+    'linkedin.com profile' => 'https://www.linkedin.com/in/johndoe',
+    'mobile linkedin' => 'https://m.linkedin.com/posts/someone-some-post-12345',
+    'lnkd.in short link' => 'https://lnkd.in/abc123',
+]);
+
 it('detects webpage urls', function (string $url) {
     expect($this->service->detectSourceType($url))->toBe(SourceType::Webpage);
 })->with([
@@ -57,6 +69,15 @@ it('returns null embed data for webpage', function () {
     $result = $this->service->extractEmbedData(
         'https://example.com/article',
         SourceType::Webpage,
+    );
+
+    expect($result)->toBeNull();
+});
+
+it('returns null embed data for linkedin', function () {
+    $result = $this->service->extractEmbedData(
+        'https://www.linkedin.com/posts/someone-some-post-12345',
+        SourceType::LinkedIn,
     );
 
     expect($result)->toBeNull();
