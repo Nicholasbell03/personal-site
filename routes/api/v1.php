@@ -15,7 +15,7 @@ Route::get('/search', SearchController::class)->name('v1.search');
 Route::get('/technologies', [TechnologyController::class, 'index'])->name('v1.technologies.index');
 
 Route::post('/chat', ChatController::class)
-    ->middleware('throttle:chat')
+    ->middleware(['browser', 'throttle:chat'])
     ->name('v1.chat');
 
 Route::get('/github/activity', [GitHubController::class, 'activity'])

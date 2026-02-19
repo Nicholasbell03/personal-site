@@ -24,7 +24,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for('chat', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('chat', fn (Request $request) => [
+            Limit::perMinute(10)->by($request->ip()),
+            Limit::perHour(50)->by($request->ip()),
+            Limit::perDay(100)->by($request->ip()),
+        ]);
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
