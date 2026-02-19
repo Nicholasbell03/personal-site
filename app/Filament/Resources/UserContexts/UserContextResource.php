@@ -33,7 +33,7 @@ class UserContextResource extends Resource
                     ->unique(ignoreRecord: true),
                 Textarea::make('value')
                     ->required()
-                    ->rows(15)
+                    ->rows(25)
                     ->columnSpanFull(),
             ]);
     }
