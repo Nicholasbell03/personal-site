@@ -45,6 +45,7 @@ class ChatController extends Controller
                     'id' => $conversationId,
                     'user_id' => $userId,
                     'title' => 'Chat',
+                    'ip_address' => $request->ip(),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

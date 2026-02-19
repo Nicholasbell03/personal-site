@@ -4,9 +4,18 @@ use App\Agents\PortfolioAgent;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 beforeEach(function () {
     Cache::forget('chat.user_id');
+
+    config(['cors.allowed_origins' => ['http://localhost:5173']]);
+
+    $this->withHeaders([
+        'Origin' => 'http://localhost:5173',
+        'Sec-Fetch-Site' => 'cross-site',
+        'Sec-Fetch-Mode' => 'cors',
+    ]);
 });
 
 it('validates message is required', function () {
@@ -84,7 +93,10 @@ it('creates conversation in database on first request', function () {
 
     $conversationId = $response->headers->get('X-Conversation-Id');
 
-    expect(DB::table('agent_conversations')->where('id', $conversationId)->exists())->toBeTrue();
+    $conversation = DB::table('agent_conversations')->where('id', $conversationId)->first();
+
+    expect($conversation)->not->toBeNull()
+        ->and($conversation->ip_address)->toBe('127.0.0.1');
 });
 
 it('persists messages after streaming completes', function () {
@@ -175,4 +187,19 @@ it('is rate limited', function () {
     $this->post('/api/v1/chat', [
         'message' => 'One too many',
     ], ['Accept' => 'application/json'])->assertTooManyRequests();
+});
+
+it('has multi-tier rate limits configured', function () {
+    $request = Request::create('/api/v1/chat', 'POST');
+    $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+    $limits = RateLimiter::limiter('chat')($request);
+
+    expect($limits)->toBeArray()->toHaveCount(3);
+    expect($limits[0]->maxAttempts)->toBe(10);
+    expect($limits[0]->decaySeconds)->toBe(60);
+    expect($limits[1]->maxAttempts)->toBe(50);
+    expect($limits[1]->decaySeconds)->toBe(3600);
+    expect($limits[2]->maxAttempts)->toBe(100);
+    expect($limits[2]->decaySeconds)->toBe(86400);
 });

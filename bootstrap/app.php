@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->alias([
+            'browser' => \App\Http\Middleware\ValidateBrowserRequest::class,
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
     })
