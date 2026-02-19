@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Projects\Schemas;
 use App\Enums\PublishStatus;
 use App\Models\Technology;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -46,8 +45,8 @@ class ProjectForm
                             ->rows(3)
                             ->helperText('Short description for listings')
                             ->columnSpanFull(),
-                        RichEditor::make('long_description')
-                            ->extraInputAttributes(['style' => 'min-height: 400px;'])
+                        Textarea::make('long_description')
+                            ->rows(20)
                             ->columnSpanFull(),
                     ])
                     ->columns(2)
