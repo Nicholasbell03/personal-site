@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Blogs\Schemas;
 
 use App\Enums\PublishStatus;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -40,9 +39,9 @@ class BlogForm
                             ->directory('blog-images')
                             ->visibility('public')
                             ->columnSpanFull(),
-                        RichEditor::make('content')
+                        Textarea::make('content')
                             ->required()
-                            ->extraInputAttributes(['style' => 'min-height: 400px;'])
+                            ->rows(20)
                             ->columnSpanFull(),
                         Textarea::make('excerpt')
                             ->rows(3)
