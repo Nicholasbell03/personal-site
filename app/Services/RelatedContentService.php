@@ -86,7 +86,7 @@ class RelatedContentService
 
             try {
                 $results = $query
-                    ->having('similarity', '>=', self::MIN_SIMILARITY)
+                    ->whereRaw('(1 - (embedding <=> ?)) >= ?', [$this->formatEmbedding($embedding), self::MIN_SIMILARITY])
                     ->orderByDesc('similarity')
                     ->limit(self::RESULTS_PER_TYPE)
                     ->get();

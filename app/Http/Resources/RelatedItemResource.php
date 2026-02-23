@@ -16,13 +16,11 @@ use Illuminate\Support\Facades\Storage;
  */
 class RelatedItemResource extends JsonResource
 {
-    private string $contentType;
-
-    public function __construct(mixed $resource, string $contentType)
-    {
-        parent::__construct($resource);
-        $this->contentType = $contentType;
-    }
+    private const TYPE_MAP = [
+        Blog::class => 'blog',
+        Project::class => 'project',
+        Share::class => 'share',
+    ];
 
     /**
      * Transform the resource into an array.
@@ -32,7 +30,7 @@ class RelatedItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'type' => $this->contentType,
+            'type' => self::TYPE_MAP[$this->resource::class] ?? 'unknown',
             'title' => $this->resource->title,
             'slug' => $this->resource->slug,
             'description' => $this->getDescription(),

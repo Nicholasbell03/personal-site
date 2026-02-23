@@ -79,8 +79,8 @@ class ShareController extends Controller
 
             return [
                 'data' => [
-                    'next' => $next ? (new RelatedItemResource($next, 'share'))->resolve() : null,
-                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item'], $item['type']))->resolve())->values()->all(),
+                    'next' => $next ? (new RelatedItemResource($next))->resolve() : null,
+                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item']))->resolve())->values()->all(),
                 ],
             ];
         });
