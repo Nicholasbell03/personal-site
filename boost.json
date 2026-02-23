@@ -1,17 +1,19 @@
 {
     "agents": [
         "claude_code",
-        "copilot",
-        "cursor",
-        "gemini"
+        "cursor"
     ],
-    "editors": [
-        "claude_code",
-        "cursor",
-        "gemini",
-        "vscode"
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "nightwatch_mcp": false,
+    "packages": [
+        "filament/filament",
+        "laravel/ai"
     ],
-    "guidelines": [
-        "filament/filament"
+    "sail": false,
+    "skills": [
+        "pest-testing",
+        "developing-with-ai-sdk"
     ]
 }

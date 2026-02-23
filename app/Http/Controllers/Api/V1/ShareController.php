@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreShareRequest;
+use App\Http\Resources\RelatedItemResource;
 use App\Http\Resources\ShareResource;
 use App\Http\Resources\ShareSummaryResource;
 use App\Models\Share;
 use App\Services\OpenGraphService;
+use App\Services\RelatedContentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -58,6 +60,29 @@ class ShareController extends Controller
                 ->firstOrFail();
 
             return (new ShareResource($share))->response()->getData(true);
+        });
+
+        return response()->json($data);
+    }
+
+    public function related(string $slug, RelatedContentService $service): JsonResponse
+    {
+        $cacheKey = Share::getApiCacheKey().".related.{$slug}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug, $service) {
+            $share = Share::query()
+                ->where('slug', $slug)
+                ->firstOrFail();
+
+            $next = $service->getNextItem($share);
+            $related = $service->getRelatedItems($share);
+
+            return [
+                'data' => [
+                    'next' => $next ? (new RelatedItemResource($next))->resolve() : null,
+                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item']))->resolve())->values()->all(),
+                ],
+            ];
         });
 
         return response()->json($data);

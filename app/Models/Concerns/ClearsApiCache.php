@@ -27,6 +27,7 @@ trait ClearsApiCache
 
         // Clear individual item cache
         Cache::forget("{$cacheKey}.show.{$this->slug}");
+        Cache::forget("{$cacheKey}.related.{$this->slug}");
 
         // Clear additional pages (first 10 pages should cover most cases)
         for ($page = 2; $page <= 10; $page++) {
