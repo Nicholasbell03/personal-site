@@ -48,7 +48,7 @@ class RelatedContentService
      * Get semantically related items across all content types using pgvector.
      *
      * @param  Blog|Project|Share  $item
-     * @return Collection<int, array{type: string, item: Blog|Project|Share}>
+     * @return Collection<int, array{item: Blog|Project|Share}>
      */
     public function getRelatedItems(Model $item, int $limit = 3): Collection
     {
@@ -64,18 +64,13 @@ class RelatedContentService
 
         $candidates = collect();
 
-        $typeMap = [
-            Blog::class => 'blog',
-            Project::class => 'project',
-            Share::class => 'share',
-        ];
+        $modelClasses = [Blog::class, Project::class, Share::class];
 
-        foreach ($typeMap as $modelClass => $type) {
+        foreach ($modelClasses as $modelClass) {
             $query = $modelClass::query()
-                ->selectRaw('*, (1 - (embedding <=> ?)) as similarity', [$this->formatEmbedding($embedding)])
-                ->whereNotNull('embedding');
+                ->whereNotNull('embedding')
+                ->whereVectorSimilarTo('embedding', $embedding, self::MIN_SIMILARITY);
 
-            // Exclude current item if same type
             if ($item::class === $modelClass) {
                 $query->where('id', '!=', $item->id);
             }
@@ -85,20 +80,10 @@ class RelatedContentService
             }
 
             try {
-                $results = $query
-                    ->whereRaw('(1 - (embedding <=> ?)) >= ?', [$this->formatEmbedding($embedding), self::MIN_SIMILARITY])
-                    ->orderByDesc('similarity')
-                    ->limit(self::RESULTS_PER_TYPE)
-                    ->get();
+                $results = $query->limit(self::RESULTS_PER_TYPE)->get();
 
                 foreach ($results as $result) {
-                    /** @var float $similarity */
-                    $similarity = $result->getAttribute('similarity');
-                    $candidates->push([
-                        'type' => $type,
-                        'item' => $result,
-                        'similarity' => $similarity,
-                    ]);
+                    $candidates->push(['item' => $result]);
                 }
             } catch (\Throwable $e) {
                 Log::error('RelatedContentService: vector search failed', [
@@ -108,25 +93,7 @@ class RelatedContentService
             }
         }
 
-        /** @var Collection<int, array{type: string, item: Blog|Project|Share}> */
-        return $candidates
-            ->sortByDesc('similarity')
-            ->take($limit)
-            ->map(fn (array $candidate): array => [
-                'type' => (string) $candidate['type'],
-                'item' => $candidate['item'],
-            ])
-            ->values();
-    }
-
-    /**
-     * Format an embedding array as a pgvector string.
-     *
-     * @param  list<float>  $embedding
-     */
-    private function formatEmbedding(array $embedding): string
-    {
-        return '['.implode(',', $embedding).']';
+        return $candidates->take($limit)->values();
     }
 
     private function isDefaultConnectionPostgres(): bool
