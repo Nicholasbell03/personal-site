@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\ProjectSummaryResource;
+use App\Http\Resources\RelatedItemResource;
 use App\Models\Project;
+use App\Services\RelatedContentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -63,6 +65,30 @@ class ProjectController extends Controller
                 ->firstOrFail();
 
             return (new ProjectResource($project))->response()->getData(true);
+        });
+
+        return response()->json($data);
+    }
+
+    public function related(string $slug, RelatedContentService $service): JsonResponse
+    {
+        $cacheKey = Project::getApiCacheKey().".related.{$slug}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug, $service) {
+            $project = Project::query()
+                ->published()
+                ->where('slug', $slug)
+                ->firstOrFail();
+
+            $next = $service->getNextItem($project);
+            $related = $service->getRelatedItems($project);
+
+            return [
+                'data' => [
+                    'next' => $next ? (new RelatedItemResource($next, 'project'))->resolve() : null,
+                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item'], $item['type']))->resolve())->values()->all(),
+                ],
+            ];
         });
 
         return response()->json($data);

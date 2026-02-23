@@ -25,6 +25,7 @@ Route::prefix('blogs')->group(function () {
     Route::get('/', [BlogController::class, 'index'])->name('v1.blogs.index');
     Route::get('/featured', [BlogController::class, 'featured'])->name('v1.blogs.featured');
     Route::get('/preview/{slug}', [BlogController::class, 'preview'])->name('v1.blogs.preview')->middleware(ValidatePreviewToken::class);
+    Route::get('/{slug}/related', [BlogController::class, 'related'])->name('v1.blogs.related');
     Route::get('/{slug}', [BlogController::class, 'show'])->name('v1.blogs.show');
 });
 
@@ -32,12 +33,14 @@ Route::prefix('projects')->group(function () {
     Route::get('/', [ProjectController::class, 'index'])->name('v1.projects.index');
     Route::get('/featured', [ProjectController::class, 'featured'])->name('v1.projects.featured');
     Route::get('/preview/{slug}', [ProjectController::class, 'preview'])->name('v1.projects.preview')->middleware(ValidatePreviewToken::class);
+    Route::get('/{slug}/related', [ProjectController::class, 'related'])->name('v1.projects.related');
     Route::get('/{slug}', [ProjectController::class, 'show'])->name('v1.projects.show');
 });
 
 Route::prefix('shares')->group(function () {
     Route::get('/', [ShareController::class, 'index'])->name('v1.shares.index');
     Route::get('/featured', [ShareController::class, 'featured'])->name('v1.shares.featured');
+    Route::get('/{slug}/related', [ShareController::class, 'related'])->name('v1.shares.related');
     Route::get('/{slug}', [ShareController::class, 'show'])->name('v1.shares.show');
 });
 
