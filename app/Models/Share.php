@@ -80,7 +80,9 @@ class Share extends Model
             if (empty($share->slug) && empty($share->title)) {
                 $host = parse_url($share->url, PHP_URL_HOST) ?? 'share';
                 $host = preg_replace('/^www\./', '', $host);
-                $share->slug = \Illuminate\Support\Str::slug($host.'-'.now()->timestamp);
+                $share->slug = static::ensureUniqueSlug(
+                    \Illuminate\Support\Str::slug($host.'-'.now()->timestamp)
+                );
             }
         });
     }
