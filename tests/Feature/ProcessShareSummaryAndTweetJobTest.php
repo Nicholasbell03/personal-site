@@ -134,3 +134,48 @@ it('logs error when x posting fails but still saves summary', function () {
     expect($share->summary)->toBe('A concise take.')
         ->and($share->x_post_id)->toBeNull();
 });
+
+it('skips summary generation when summary already exists', function () {
+    Queue::fake();
+    $share = Share::factory()->withSummary()->create(['summary' => 'Existing summary']);
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    $mockSummaryService = Mockery::mock(SummaryService::class);
+    $mockSummaryService->shouldNotReceive('generate');
+
+    $mockXService = Mockery::mock(XPostingService::class);
+    $mockXService->shouldReceive('postTweet')
+        ->once()
+        ->andReturn(['id' => '789', 'text' => 'Existing summary']);
+
+    (new ProcessShareSummaryAndTweetJob($share))
+        ->handle($mockSummaryService, $mockXService);
+
+    $share->refresh();
+
+    expect($share->summary)->toBe('Existing summary')
+        ->and($share->x_post_id)->toBe('789');
+});
+
+it('skips x posting when already posted', function () {
+    Queue::fake();
+    $share = Share::factory()->postedToX()->create([
+        'summary' => 'Already posted',
+        'x_post_id' => '999',
+    ]);
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    $mockSummaryService = Mockery::mock(SummaryService::class);
+    $mockSummaryService->shouldNotReceive('generate');
+
+    $mockXService = Mockery::mock(XPostingService::class);
+    $mockXService->shouldNotReceive('postTweet');
+
+    (new ProcessShareSummaryAndTweetJob($share))
+        ->handle($mockSummaryService, $mockXService);
+
+    $share->refresh();
+
+    expect($share->summary)->toBe('Already posted')
+        ->and($share->x_post_id)->toBe('999');
+});

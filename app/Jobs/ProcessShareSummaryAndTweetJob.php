@@ -31,14 +31,16 @@ class ProcessShareSummaryAndTweetJob implements ShouldQueue
 
     public function handle(SummaryService $summaryService, XPostingService $xPostingService): void
     {
-        $summary = $summaryService->generate($this->share);
+        if ($this->share->summary === null) {
+            $summary = $summaryService->generate($this->share);
 
-        if ($summary !== null) {
-            $this->share->summary = $summary;
-            $this->share->saveQuietly();
+            if ($summary !== null) {
+                $this->share->summary = $summary;
+                $this->share->saveQuietly();
+            }
         }
 
-        if ($this->skipXPosting || ! $this->share->post_to_x || $summary === null) {
+        if ($this->skipXPosting || ! $this->share->post_to_x || $this->share->summary === null || $this->share->x_post_id !== null) {
             return;
         }
 
