@@ -50,6 +50,11 @@ return [
         'dimensions' => (int) env('EMBEDDING_DIMENSIONS', 1536),
     ],
 
+    'summary' => [
+        'provider' => env('SUMMARY_PROVIDER', 'openai'),
+        'model' => env('SUMMARY_MODEL', 'gpt-4o-mini'),
+    ],
+
     'x' => [
         'api_key' => env('X_API_KEY'),
         'api_secret' => env('X_API_SECRET'),

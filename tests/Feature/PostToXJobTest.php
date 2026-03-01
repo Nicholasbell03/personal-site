@@ -3,13 +3,19 @@
 use App\Jobs\PostToXJob;
 use App\Models\Share;
 use App\Services\XPostingService;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 it('posts tweet and saves x_post_id', function () {
     Queue::fake();
     $share = Share::factory()->withSummary()->create(['summary' => 'A concise take.', 'post_to_x' => true]);
     Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
 
     $mockService = Mockery::mock(XPostingService::class);
     $mockService->shouldReceive('postTweet')
@@ -71,21 +77,25 @@ it('skips posting when already posted', function () {
     expect($share->x_post_id)->toBe('999');
 });
 
-it('logs error on failure but does not save x_post_id', function () {
+it('lets exceptions propagate so queue retries work', function () {
     Queue::fake();
     $share = Share::factory()->withSummary()->create(['summary' => 'A concise take.', 'post_to_x' => true]);
     Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
 
     $mockService = Mockery::mock(XPostingService::class);
     $mockService->shouldReceive('postTweet')
         ->once()
         ->andThrow(new \RuntimeException('X API error'));
 
-    Log::shouldReceive('error')
-        ->once()
-        ->withArgs(fn ($message) => str_contains($message, 'X posting failed'));
-
-    (new PostToXJob($share))->handle($mockService);
+    expect(fn () => (new PostToXJob($share))->handle($mockService))
+        ->toThrow(\RuntimeException::class, 'X API error');
 
     $share->refresh();
 

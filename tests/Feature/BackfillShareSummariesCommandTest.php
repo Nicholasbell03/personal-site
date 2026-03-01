@@ -29,14 +29,14 @@ it('skips shares without commentary', function () {
     Share::factory()->withoutSummary()->create(['commentary' => null]);
     Share::factory()->withoutSummary()->create(['commentary' => 'Has commentary']);
 
-    // 2 GenerateSummaryJob from create events
-    Queue::assertPushed(GenerateSummaryJob::class, 2);
+    // 1 GenerateSummaryJob from create events (null commentary share skips chain)
+    Queue::assertPushed(GenerateSummaryJob::class, 1);
 
     $this->artisan('shares:backfill-summaries')
         ->assertSuccessful();
 
-    // Only the share with commentary gets a backfill job: 2 from create + 1 from backfill = 3
-    Queue::assertPushed(GenerateSummaryJob::class, 3);
+    // Only the share with commentary gets a backfill job: 1 from create + 1 from backfill = 2
+    Queue::assertPushed(GenerateSummaryJob::class, 2);
 });
 
 it('does not dispatch PostToXJob from backfill', function () {

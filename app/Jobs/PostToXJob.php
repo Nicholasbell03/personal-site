@@ -33,18 +33,18 @@ class PostToXJob implements ShouldQueue
             return;
         }
 
-        try {
-            $tweetData = $xPostingService->postTweet($this->share);
-
-            $this->share->x_post_id = $tweetData['id'];
-            $this->share->saveQuietly();
-        } catch (\Throwable $e) {
-            Log::error('PostToXJob: X posting failed', [
+        if (! config('services.x.api_key') || ! config('services.x.api_secret') || ! config('services.x.access_token') || ! config('services.x.access_token_secret')) {
+            Log::warning('PostToXJob: X credentials not configured, skipping', [
                 'share_id' => $this->share->id,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
+
+            return;
         }
+
+        $tweetData = $xPostingService->postTweet($this->share);
+
+        $this->share->x_post_id = $tweetData['id'];
+        $this->share->saveQuietly();
     }
 
     public function failed(\Throwable $exception): void

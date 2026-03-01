@@ -27,7 +27,7 @@ class SummaryService
         ]));
 
         $prompt = <<<PROMPT
-        Condense the following commentary into a short, punchy take — max 200 characters. The commentary IS the opinion/angle — faithfully distil the author's thoughts, don't reinterpret the original content independently. The title and description are context only.
+        Condense the following commentary into a short, punchy take — max 280 characters. The commentary IS the opinion/angle — faithfully distil the author's thoughts, don't reinterpret the original content independently. The title and description are context only.
 
         {$context}
 
@@ -36,7 +36,11 @@ class SummaryService
 
         try {
             $response = agent(instructions: 'You are a concise writing assistant. Output only the condensed take — no quotes, no labels, no preamble.')
-                ->prompt($prompt);
+                ->prompt(
+                    $prompt,
+                    provider: config('services.summary.provider'),
+                    model: config('services.summary.model'),
+                );
 
             $summary = trim($response->text);
 

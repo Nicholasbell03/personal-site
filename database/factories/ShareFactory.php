@@ -74,6 +74,13 @@ class ShareFactory extends Factory
         ]);
     }
 
+    public function withoutCommentary(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'commentary' => null,
+        ]);
+    }
+
     public function postedToX(): static
     {
         return $this->state(fn (array $attributes) => [

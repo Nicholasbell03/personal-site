@@ -40,6 +40,15 @@ class XPostingService
      */
     public function postTweet(Share $share): array
     {
+        $consumerKey = config('services.x.api_key');
+        $consumerSecret = config('services.x.api_secret');
+        $accessToken = config('services.x.access_token');
+        $accessTokenSecret = config('services.x.access_token_secret');
+
+        if (! $consumerKey || ! $consumerSecret || ! $accessToken || ! $accessTokenSecret) {
+            throw new \RuntimeException('XPostingService: missing X/Twitter OAuth credentials');
+        }
+
         $text = $this->composeTweet($share);
         $payload = ['text' => $text];
 
@@ -47,10 +56,8 @@ class XPostingService
             $payload['quote_tweet_id'] = $share->embed_data['tweet_id'];
         }
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])
-            ->withToken($this->buildOAuthHeader($payload), 'OAuth')
+        $response = Http::asJson()
+            ->withToken($this->buildOAuthHeader($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret), 'OAuth')
             ->post(self::TWEETS_ENDPOINT, $payload);
 
         if (! $response->successful()) {
@@ -75,16 +82,9 @@ class XPostingService
 
     /**
      * Build OAuth 1.0a Authorization header value.
-     *
-     * @param  array<string, mixed>  $payload
      */
-    private function buildOAuthHeader(array $payload): string
+    private function buildOAuthHeader(string $consumerKey, string $consumerSecret, string $accessToken, string $accessTokenSecret): string
     {
-        $consumerKey = config('services.x.api_key');
-        $consumerSecret = config('services.x.api_secret');
-        $accessToken = config('services.x.access_token');
-        $accessTokenSecret = config('services.x.access_token_secret');
-
         $oauthParams = [
             'oauth_consumer_key' => $consumerKey,
             'oauth_nonce' => bin2hex(random_bytes(16)),

@@ -11,6 +11,10 @@ trait HasSummary
     public static function bootHasSummary(): void
     {
         static::created(function (self $model) {
+            if ($model->commentary === null) {
+                return;
+            }
+
             Bus::chain([
                 new GenerateSummaryJob($model),
                 new PostToXJob($model),
