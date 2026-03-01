@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\ProcessShareSummaryAndTweetJob;
+use App\Jobs\GenerateSummaryJob;
 use App\Models\Share;
 use Illuminate\Console\Command;
 
@@ -10,7 +10,7 @@ class BackfillShareSummariesCommand extends Command
 {
     protected $signature = 'shares:backfill-summaries';
 
-    protected $description = 'Dispatch jobs to generate AI summaries for shares that are missing them (no X posting)';
+    protected $description = 'Dispatch jobs to generate AI summaries for shares that are missing them';
 
     public function handle(): int
     {
@@ -21,7 +21,7 @@ class BackfillShareSummariesCommand extends Command
             ->whereNotNull('commentary')
             ->chunkById(50, function ($shares) use (&$count) {
                 foreach ($shares as $share) {
-                    ProcessShareSummaryAndTweetJob::dispatch($share, skipXPosting: true);
+                    GenerateSummaryJob::dispatch($share);
                     $count++;
                 }
             });

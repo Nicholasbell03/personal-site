@@ -2,14 +2,19 @@
 
 namespace App\Models\Concerns;
 
-use App\Jobs\ProcessShareSummaryAndTweetJob;
+use App\Jobs\GenerateSummaryJob;
+use App\Jobs\PostToXJob;
+use Illuminate\Support\Facades\Bus;
 
 trait HasSummary
 {
     public static function bootHasSummary(): void
     {
         static::created(function (self $model) {
-            ProcessShareSummaryAndTweetJob::dispatch($model);
+            Bus::chain([
+                new GenerateSummaryJob($model),
+                new PostToXJob($model),
+            ])->dispatch();
         });
     }
 }
