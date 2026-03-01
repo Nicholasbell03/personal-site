@@ -6,6 +6,7 @@ use App\Enums\SourceType;
 use App\Models\Concerns\ClearsApiCache;
 use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasSlug;
+use App\Models\Concerns\HasSummary;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,8 +21,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $site_name
  * @property string|null $author
  * @property string|null $commentary
+ * @property string|null $summary
  * @property array<string, mixed>|null $embed_data
  * @property array<string, mixed>|null $og_raw
+ * @property bool $post_to_x
+ * @property string|null $x_post_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property array<int, float>|null $embedding
@@ -42,6 +46,7 @@ class Share extends Model
     use ClearsApiCache;
     use HasEmbedding;
     use HasSlug;
+    use HasSummary;
 
     /**
      * @var list<string>
@@ -56,8 +61,11 @@ class Share extends Model
         'site_name',
         'author',
         'commentary',
+        'summary',
         'embed_data',
         'og_raw',
+        'post_to_x',
+        'x_post_id',
     ];
 
     /**
@@ -69,6 +77,7 @@ class Share extends Model
             'source_type' => SourceType::class,
             'embed_data' => 'array',
             'og_raw' => 'array',
+            'post_to_x' => 'boolean',
             'embedding' => 'array',
             'embedding_generated_at' => 'datetime',
         ];

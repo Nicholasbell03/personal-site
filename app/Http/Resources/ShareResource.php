@@ -28,6 +28,7 @@ class ShareResource extends JsonResource
             'site_name' => $this->site_name,
             'author' => $this->author,
             'commentary' => $this->commentary,
+            'summary' => $this->summary,
             'embed_data' => $this->embed_data,
             'created_at' => $this->created_at,
         ];

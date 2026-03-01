@@ -105,6 +105,7 @@ class ShareController extends Controller
             'commentary' => $validated['commentary'] ?? null,
             'embed_data' => $ogData['embed_data'],
             'og_raw' => $ogData['og_raw'],
+            'post_to_x' => $validated['post_to_x'] ?? true,
         ]);
 
         return (new ShareResource($share))

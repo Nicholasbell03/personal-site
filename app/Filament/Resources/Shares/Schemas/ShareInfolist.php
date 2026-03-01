@@ -35,6 +35,20 @@ class ShareInfolist
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+                Section::make('AI Summary & X')
+                    ->schema([
+                        TextEntry::make('summary')
+                            ->placeholder('-')
+                            ->columnSpanFull(),
+                        TextEntry::make('x_post_id')
+                            ->label('X Post')
+                            ->placeholder('Not posted')
+                            ->url(fn ($record): ?string => $record->x_post_id
+                                ? "https://x.com/i/status/{$record->x_post_id}"
+                                : null)
+                            ->openUrlInNewTab(),
+                    ])
+                    ->columns(2),
                 Section::make('Metadata')
                     ->schema([
                         TextEntry::make('created_at')

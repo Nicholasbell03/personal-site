@@ -21,6 +21,7 @@ class StoreShareRequest extends FormRequest
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'commentary' => ['nullable', 'string'],
+            'post_to_x' => ['sometimes', 'boolean'],
         ];
     }
 }

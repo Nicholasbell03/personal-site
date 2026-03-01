@@ -30,8 +30,11 @@ class ShareFactory extends Factory
             'site_name' => fake()->domainName(),
             'author' => fake()->name(),
             'commentary' => fake()->paragraphs(2, true),
+            'summary' => fake()->sentence(),
             'embed_data' => null,
             'og_raw' => null,
+            'post_to_x' => true,
+            'x_post_id' => null,
         ];
     }
 
@@ -54,6 +57,36 @@ class ShareFactory extends Factory
             'source_type' => SourceType::XPost,
             'author' => '@'.$username,
             'embed_data' => ['tweet_id' => fake()->numerify('####################')],
+        ]);
+    }
+
+    public function withSummary(?string $summary = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'summary' => $summary ?? fake()->sentence(),
+        ]);
+    }
+
+    public function withoutSummary(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'summary' => null,
+        ]);
+    }
+
+    public function postedToX(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'post_to_x' => true,
+            'x_post_id' => fake()->numerify('####################'),
+        ]);
+    }
+
+    public function withoutXPosting(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'post_to_x' => false,
+            'x_post_id' => null,
         ]);
     }
 

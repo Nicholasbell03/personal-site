@@ -7,6 +7,7 @@ use App\Services\OpenGraphService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -29,6 +30,11 @@ class SharesTable
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
+                IconColumn::make('x_post_id')
+                    ->label('X')
+                    ->icon(fn ($state): string => $state ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+                    ->color(fn ($state): string => $state ? 'success' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
