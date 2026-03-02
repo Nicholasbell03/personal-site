@@ -3,6 +3,10 @@
 use App\Enums\SourceType;
 use App\Models\Share;
 use App\Services\XPostingService;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('composes tweet with summary and url for webpage shares', function () {
     $share = Share::factory()->make([
@@ -56,4 +60,30 @@ it('truncates summary to respect tweet character limit for non-x-post shares', f
     // Max summary: 280 - 23 (t.co) - 2 (\n\n) = 255 chars
     // + 2 (\n\n) + URL
     expect(mb_strlen($tweet))->toBeLessThanOrEqual(280 + strlen($share->url) - 23);
+});
+
+it('throws when successful x response is missing data id', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => ['text' => 'posted'],
+        ], 201),
+    ]);
+
+    $share = Share::factory()->make([
+        'source_type' => SourceType::Webpage,
+        'summary' => 'Ship small, iterate fast.',
+        'url' => 'https://example.com/post',
+    ]);
+
+    $service = new XPostingService;
+
+    expect(fn () => $service->postTweet($share))
+        ->toThrow(\RuntimeException::class, 'malformed X API response payload');
 });

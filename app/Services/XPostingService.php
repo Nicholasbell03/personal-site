@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SourceType;
 use App\Models\Share;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -56,6 +57,7 @@ class XPostingService
             $payload['quote_tweet_id'] = $share->embed_data['tweet_id'];
         }
 
+        /** @var Response $response */
         $response = Http::asJson()
             ->withToken($this->buildOAuthHeader($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret), 'OAuth')
             ->post(self::TWEETS_ENDPOINT, $payload);
@@ -72,12 +74,27 @@ class XPostingService
 
         $data = $response->json('data');
 
+        if (! is_array($data) || ! isset($data['id']) || ! is_string($data['id']) || trim($data['id']) === '') {
+            Log::error('XPostingService: malformed success payload from X API', [
+                'share_id' => $share->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new \RuntimeException('XPostingService: malformed X API response payload');
+        }
+
+        $normalizedData = [
+            'id' => $data['id'],
+            'text' => isset($data['text']) && is_string($data['text']) ? $data['text'] : '',
+        ];
+
         Log::info('XPostingService: tweet posted', [
             'share_id' => $share->id,
-            'tweet_id' => $data['id'] ?? null,
+            'tweet_id' => $normalizedData['id'],
         ]);
 
-        return $data;
+        return $normalizedData;
     }
 
     /**
