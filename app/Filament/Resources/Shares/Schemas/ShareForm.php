@@ -7,6 +7,7 @@ use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -58,6 +59,15 @@ class ShareForm
                             ->nullable()
                             ->extraInputAttributes(['style' => 'min-height: 300px;'])
                             ->columnSpanFull(),
+                        Textarea::make('summary')
+                            ->nullable()
+                            ->maxLength(280)
+                            ->rows(3)
+                            ->helperText('AI-generated summary for card display and tweets. Leave blank to auto-generate.')
+                            ->columnSpanFull(),
+                        Toggle::make('post_to_x')
+                            ->label('Post to X/Twitter')
+                            ->default(true),
                     ])
                     ->columns(2)
                     ->columnSpan(4),

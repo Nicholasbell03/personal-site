@@ -242,6 +242,36 @@ it('preserves existing fields when metadata returns nulls', function () {
     ]);
 });
 
+it('can edit share summary', function () {
+    $share = Share::factory()->create(['summary' => 'Original summary']);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->set('data.summary', 'Updated summary')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas(Share::class, [
+        'id' => $share->id,
+        'summary' => 'Updated summary',
+    ]);
+});
+
+it('can toggle post_to_x on edit', function () {
+    $share = Share::factory()->create(['post_to_x' => true]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->set('data.post_to_x', false)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas(Share::class, [
+        'id' => $share->id,
+        'post_to_x' => false,
+    ]);
+});
+
 it('shows regenerate embedding action on edit page when embedding is missing', function () {
     Queue::fake();
 

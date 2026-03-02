@@ -108,3 +108,68 @@ it('uses user-provided title over OG title', function () {
         'title' => 'My Custom Title',
     ]);
 });
+
+it('persists post_to_x when provided', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $mockService = Mockery::mock(OpenGraphService::class);
+    $mockService->shouldReceive('fetch')
+        ->once()
+        ->andReturn([
+            'title' => 'Title',
+            'description' => 'Description',
+            'image' => null,
+            'site_name' => null,
+            'author' => null,
+            'source_type' => \App\Enums\SourceType::Webpage,
+            'embed_data' => null,
+            'og_raw' => null,
+        ]);
+    $this->app->instance(OpenGraphService::class, $mockService);
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/shares', [
+            'url' => 'https://example.com/article',
+            'post_to_x' => false,
+        ]);
+
+    $response->assertCreated();
+
+    $this->assertDatabaseHas('shares', [
+        'url' => 'https://example.com/article',
+        'post_to_x' => false,
+    ]);
+});
+
+it('defaults post_to_x to true when not provided', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $mockService = Mockery::mock(OpenGraphService::class);
+    $mockService->shouldReceive('fetch')
+        ->once()
+        ->andReturn([
+            'title' => 'Title',
+            'description' => 'Description',
+            'image' => null,
+            'site_name' => null,
+            'author' => null,
+            'source_type' => \App\Enums\SourceType::Webpage,
+            'embed_data' => null,
+            'og_raw' => null,
+        ]);
+    $this->app->instance(OpenGraphService::class, $mockService);
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/shares', [
+            'url' => 'https://example.com/article',
+        ]);
+
+    $response->assertCreated();
+
+    $this->assertDatabaseHas('shares', [
+        'url' => 'https://example.com/article',
+        'post_to_x' => true,
+    ]);
+});
