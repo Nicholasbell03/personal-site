@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Shares\Tables;
 
 use App\Enums\SourceType;
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use App\Services\OpenGraphService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -49,6 +50,7 @@ class SharesTable
                 Action::make('fetchMetadata')
                     ->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowPath)
                     ->action(fn ($record) => app(OpenGraphService::class)->refreshMetadata($record)),
+                RegenerateEmbeddingAction::make(),
                 ViewAction::make(),
                 EditAction::make(),
             ])

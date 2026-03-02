@@ -8,8 +8,13 @@ on:
 jobs:
   tests:
     if: ${{ !github.event.pull_request.draft }}
-    name: Run Pest Tests
+    name: Pest (Shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
 
     env:
       DB_CONNECTION: sqlite
@@ -22,19 +27,11 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          extensions: mbstring, dom, fileinfo, sqlite3
+          extensions: mbstring, dom, fileinfo, sqlite3, pcntl
           coverage: none
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-
-
       - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --optimize-autoloader
+        uses: ramsey/composer-install@v3
 
       - name: Prepare application
         run: |
@@ -45,4 +42,13 @@ jobs:
         run: php artisan migrate --force
 
       - name: Run tests
-        run: php artisan test
+        run: vendor/bin/pest --parallel --shard=${{ matrix.shard }}/4
+
+  test-results:
+    if: ${{ !github.event.pull_request.draft }}
+    name: Test Results
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: All shards passed
+        run: echo "All 4 test shards passed successfully."
