@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Blogs\Pages;
 
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use App\Filament\Resources\Blogs\BlogResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -16,6 +17,7 @@ class EditBlog extends EditRecord
         return [
             ViewAction::make(),
             DeleteAction::make(),
+            RegenerateEmbeddingAction::make(),
         ];
     }
 }

@@ -72,3 +72,45 @@ it('returns null author for x post with non-standard url path', function () {
     expect($result['author'])->toBeNull()
         ->and($result['source_type'])->toBe(SourceType::XPost);
 });
+
+it('returns null author for x.com/i/status urls (reserved path)', function () {
+    Http::fake([
+        'https://x.com/*' => Http::response('<html><head>
+            <meta property="og:title" content="A tweet via redirect">
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://x.com/i/status/1234567890');
+
+    expect($result['author'])->toBeNull()
+        ->and($result['source_type'])->toBe(SourceType::XPost);
+});
+
+it('extracts author from meta name="author" when article:author absent', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('<html><head>
+            <meta property="og:title" content="Blog Post">
+            <meta name="author" content="John Doe">
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://example.com/blog/post');
+
+    expect($result['author'])->toBe('John Doe')
+        ->and($result['source_type'])->toBe(SourceType::Webpage);
+});
+
+it('prefers article:author over meta name="author"', function () {
+    Http::fake([
+        'https://example.com/*' => Http::response('<html><head>
+            <meta property="og:title" content="Blog Post">
+            <meta property="article:author" content="Jane Smith">
+            <meta name="author" content="John Doe">
+        </head></html>'),
+    ]);
+
+    $result = $this->service->fetch('https://example.com/blog/post');
+
+    expect($result['author'])->toBe('Jane Smith')
+        ->and($result['source_type'])->toBe(SourceType::Webpage);
+});

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Projects\Tables;
 
 use App\Enums\PublishStatus;
 use App\Filament\Actions\PreviewAction;
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -52,6 +53,7 @@ class ProjectsTable
             ])
             ->recordActions([
                 PreviewAction::make()->previewPath('projects'),
+                RegenerateEmbeddingAction::make(),
                 ViewAction::make(),
                 EditAction::make(),
             ])

@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Log;
 class OpenGraphService
 {
     /** @var list<string> */
+    private const X_RESERVED_PATHS = ['i'];
+
+    /** @var list<string> */
     public const METADATA_FIELDS = [
         'title',
         'description',
@@ -279,6 +282,10 @@ class OpenGraphService
             $path = parse_url($url, PHP_URL_PATH);
 
             if ($path && preg_match('#^/([^/]+)/status/\d+#', $path, $matches)) {
+                if (in_array(strtolower($matches[1]), self::X_RESERVED_PATHS, true)) {
+                    return null;
+                }
+
                 return '@'.$matches[1];
             }
 
@@ -292,10 +299,10 @@ class OpenGraphService
                 return str_replace('-', ' ', $matches[1]);
             }
 
-            return $ogTags['article:author'] ?? null;
+            return $ogTags['article:author'] ?? $ogTags['meta:author'] ?? null;
         }
 
-        return $ogTags['article:author'] ?? null;
+        return $ogTags['article:author'] ?? $ogTags['meta:author'] ?? null;
     }
 
     // ── URL analysis (private) ──────────────────────────────────
@@ -470,6 +477,16 @@ class OpenGraphService
                 if ($content) {
                     $tags['og:description'] = $content;
                 }
+            }
+        }
+
+        $authorMeta = $xpath->query('//meta[@name="author"]');
+        if ($authorMeta && $authorMeta->length > 0 && $authorMeta->item(0) instanceof \DOMElement) {
+            /** @var \DOMElement $authorMetaItem */
+            $authorMetaItem = $authorMeta->item(0);
+            $content = $authorMetaItem->getAttribute('content');
+            if ($content) {
+                $tags['meta:author'] = $content;
             }
         }
 

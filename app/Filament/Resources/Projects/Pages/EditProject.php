@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Pages;
 
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use App\Filament\Resources\Projects\ProjectResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -16,6 +17,7 @@ class EditProject extends EditRecord
         return [
             ViewAction::make(),
             DeleteAction::make(),
+            RegenerateEmbeddingAction::make(),
         ];
     }
 }
