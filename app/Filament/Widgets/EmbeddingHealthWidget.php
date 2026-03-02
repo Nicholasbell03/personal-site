@@ -32,6 +32,13 @@ class EmbeddingHealthWidget extends StatsOverviewWidget
     private function buildStat(string $label, string $modelClass): Stat
     {
         $total = $modelClass::query()->count();
+
+        if ($total === 0) {
+            return Stat::make("{$label} Missing Embeddings", '—')
+                ->description('No records')
+                ->color('gray');
+        }
+
         $missing = $modelClass::query()->whereNull('embedding_generated_at')->count();
 
         $color = match (true) {

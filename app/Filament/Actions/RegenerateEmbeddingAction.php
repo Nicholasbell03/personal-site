@@ -6,6 +6,7 @@ use App\Jobs\GenerateEmbeddingJob;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
 class RegenerateEmbeddingAction extends Action
@@ -23,7 +24,8 @@ class RegenerateEmbeddingAction extends Action
             ->icon(Heroicon::OutlinedCpuChip)
             ->color('warning')
             ->label('Generate Embedding')
-            ->visible(fn ($record): bool => $record->embedding_generated_at === null)
+            ->visible(fn ($record): bool => $record instanceof Model
+                && $record->getAttribute('embedding_generated_at') === null)
             ->requiresConfirmation()
             ->modalHeading('Generate Embedding')
             ->modalDescription('This will dispatch a job to generate the embedding for this record. Continue?')
