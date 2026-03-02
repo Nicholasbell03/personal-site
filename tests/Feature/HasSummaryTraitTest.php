@@ -34,3 +34,19 @@ it('does not dispatch chain when commentary is null', function () {
 
     Bus::assertNotDispatched(GenerateSummaryJob::class);
 });
+
+it('does not dispatch chain when commentary is whitespace only', function () {
+    Bus::fake();
+
+    Share::factory()->withoutSummary()->create(['commentary' => '   ']);
+
+    Bus::assertNotDispatched(GenerateSummaryJob::class);
+});
+
+it('does not dispatch chain when commentary has only html tags', function () {
+    Bus::fake();
+
+    Share::factory()->withoutSummary()->create(['commentary' => '<p></p><br>']);
+
+    Bus::assertNotDispatched(GenerateSummaryJob::class);
+});
