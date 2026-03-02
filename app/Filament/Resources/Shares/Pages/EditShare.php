@@ -2,13 +2,14 @@
 
 namespace App\Filament\Resources\Shares\Pages;
 
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use App\Filament\Resources\Shares\ShareResource;
 use App\Services\OpenGraphService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
 class EditShare extends EditRecord
 {
@@ -19,6 +20,7 @@ class EditShare extends EditRecord
         return [
             ViewAction::make(),
             DeleteAction::make(),
+            RegenerateEmbeddingAction::make(),
             Action::make('fetchMetadata')
                 ->icon(\Filament\Support\Icons\Heroicon::OutlinedArrowPath)
                 ->action(function ($record, $livewire) {

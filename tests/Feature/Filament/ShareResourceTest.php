@@ -5,10 +5,12 @@ use App\Filament\Resources\Shares\Pages\CreateShare;
 use App\Filament\Resources\Shares\Pages\EditShare;
 use App\Filament\Resources\Shares\Pages\ListShares;
 use App\Filament\Resources\Shares\ShareResource;
+use App\Jobs\GenerateEmbeddingJob;
 use App\Models\Share;
 use App\Models\User;
 use App\Services\OpenGraphService;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -238,4 +240,49 @@ it('preserves existing fields when metadata returns nulls', function () {
         'title' => 'Existing Title',
         'description' => 'Existing description',
     ]);
+});
+
+it('shows regenerate embedding action on edit page when embedding is missing', function () {
+    Queue::fake();
+
+    $share = Share::factory()->create(['embedding_generated_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->assertActionVisible('regenerateEmbedding');
+});
+
+it('hides regenerate embedding action on edit page when embedding exists', function () {
+    Queue::fake();
+
+    $share = Share::factory()->create(['embedding_generated_at' => now()]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->assertActionHidden('regenerateEmbedding');
+});
+
+it('dispatches embedding job via regenerate embedding action on edit page', function () {
+    Queue::fake();
+
+    $share = Share::factory()->create(['embedding_generated_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->callAction('regenerateEmbedding')
+        ->assertNotified('Embedding job dispatched');
+
+    Queue::assertPushed(GenerateEmbeddingJob::class, fn ($job) => $job->model->is($share));
+});
+
+it('dispatches embedding job via regenerate embedding table action', function () {
+    Queue::fake();
+
+    $share = Share::factory()->create(['embedding_generated_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(ListShares::class)
+        ->callTableAction('regenerateEmbedding', $share);
+
+    Queue::assertPushed(GenerateEmbeddingJob::class, fn ($job) => $job->model->is($share));
 });

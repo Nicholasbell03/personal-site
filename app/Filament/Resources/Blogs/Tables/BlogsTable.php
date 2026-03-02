@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Blogs\Tables;
 
 use App\Enums\PublishStatus;
 use App\Filament\Actions\PreviewAction;
+use App\Filament\Actions\RegenerateEmbeddingAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
@@ -41,6 +42,7 @@ class BlogsTable
             ])
             ->recordActions([
                 PreviewAction::make()->previewPath('blog'),
+                RegenerateEmbeddingAction::make(),
                 ViewAction::make(),
                 EditAction::make(),
             ])
