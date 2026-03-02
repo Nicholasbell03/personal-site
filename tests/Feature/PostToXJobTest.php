@@ -77,6 +77,29 @@ it('skips posting when already posted', function () {
     expect($share->x_post_id)->toBe('999');
 });
 
+it('skips posting when stale model instance is out of date', function () {
+    Queue::fake();
+    $share = Share::factory()->withSummary()->create([
+        'summary' => 'Already posted elsewhere',
+        'post_to_x' => true,
+        'x_post_id' => null,
+    ]);
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    $staleShare = $share->replicate();
+    $staleShare->id = $share->id;
+
+    $share->update(['x_post_id' => 'external-123']);
+
+    $mockService = Mockery::mock(XPostingService::class);
+    $mockService->shouldNotReceive('postTweet');
+
+    (new PostToXJob($staleShare))->handle($mockService);
+
+    $share->refresh();
+    expect($share->x_post_id)->toBe('external-123');
+});
+
 it('lets exceptions propagate so queue retries work', function () {
     Queue::fake();
     $share = Share::factory()->withSummary()->create(['summary' => 'A concise take.', 'post_to_x' => true]);
