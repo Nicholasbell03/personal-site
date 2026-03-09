@@ -4,7 +4,6 @@ namespace App\Models\Concerns;
 
 use App\Jobs\GenerateSummaryJob;
 use App\Jobs\PostToXJob;
-use Illuminate\Support\Facades\Bus;
 
 trait HasSummary
 {
@@ -17,10 +16,8 @@ trait HasSummary
                 return;
             }
 
-            Bus::chain([
-                new GenerateSummaryJob($model),
-                new PostToXJob($model),
-            ])->dispatch();
+            GenerateSummaryJob::dispatch($model);
+            PostToXJob::dispatch($model)->delay(now()->addMinutes(2));
         });
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\XCreditsDepletedException;
 use App\Models\Share;
 use App\Services\XPostingService;
 use Illuminate\Bus\Queueable;
@@ -56,7 +57,16 @@ class PostToXJob implements ShouldQueue
                 return;
             }
 
-            $tweetData = $xPostingService->postTweet($share);
+            try {
+                $tweetData = $xPostingService->postTweet($share);
+            } catch (XCreditsDepletedException $e) {
+                Log::warning('PostToXJob: X API credits depleted, will not retry', [
+                    'share_id' => $share->id,
+                ]);
+                $this->fail($e);
+
+                return;
+            }
 
             $updated = Share::query()
                 ->whereKey($share->id)

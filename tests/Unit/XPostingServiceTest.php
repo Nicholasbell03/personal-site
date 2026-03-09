@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SourceType;
+use App\Exceptions\XCreditsDepletedException;
 use App\Models\Share;
 use App\Services\XPostingService;
 use Illuminate\Support\Facades\Http;
@@ -86,4 +87,31 @@ it('throws when successful x response is missing data id', function () {
 
     expect(fn () => $service->postTweet($share))
         ->toThrow(\RuntimeException::class, 'malformed X API response payload');
+});
+
+it('throws XCreditsDepletedException on 402 response', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'title' => 'CreditsDepleted',
+            'detail' => 'Your account does not have any credits.',
+        ], 402),
+    ]);
+
+    $share = Share::factory()->make([
+        'source_type' => SourceType::Webpage,
+        'summary' => 'A great article.',
+        'url' => 'https://example.com/post',
+    ]);
+
+    $service = new XPostingService;
+
+    expect(fn () => $service->postTweet($share))
+        ->toThrow(XCreditsDepletedException::class);
 });
