@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\XCreditsDepletedException;
 use App\Jobs\PostToXJob;
 use App\Models\Share;
 use App\Services\XPostingService;
@@ -123,4 +124,30 @@ it('lets exceptions propagate so queue retries work', function () {
     $share->refresh();
 
     expect($share->x_post_id)->toBeNull();
+});
+
+it('fails permanently without retrying when X credits are depleted', function () {
+    Queue::fake();
+    $share = Share::factory()->withSummary()->create(['summary' => 'A concise take.', 'post_to_x' => true]);
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    $mockService = Mockery::mock(XPostingService::class);
+    $mockService->shouldReceive('postTweet')
+        ->once()
+        ->andThrow(new XCreditsDepletedException('X API credits depleted'));
+
+    $job = new PostToXJob($share);
+    $job->handle($mockService);
+
+    $share->refresh();
+
+    expect($share->x_post_id)->toBeNull();
+    expect($job->job)->toBeNull();
 });

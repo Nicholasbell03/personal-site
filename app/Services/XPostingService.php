@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\SourceType;
+use App\Exceptions\XCreditsDepletedException;
 use App\Models\Share;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -68,6 +69,10 @@ class XPostingService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
+
+            if ($response->status() === 402) {
+                throw new XCreditsDepletedException("X API credits depleted: {$response->body()}");
+            }
 
             throw new \RuntimeException("X API returned {$response->status()}: {$response->body()}");
         }
