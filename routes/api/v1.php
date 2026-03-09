@@ -45,5 +45,7 @@ Route::prefix('shares')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/blogs', [BlogController::class, 'store'])->name('v1.blogs.store');
+    Route::post('/projects', [ProjectController::class, 'store'])->name('v1.projects.store');
     Route::post('/shares', [ShareController::class, 'store'])->name('v1.shares.store');
 });

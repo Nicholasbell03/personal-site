@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PublishStatus;
+use App\Filament\Resources\Projects\ProjectResource as FilamentProjectResource;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\StoreProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\ProjectSummaryResource;
 use App\Http\Resources\RelatedItemResource;
@@ -92,6 +95,24 @@ class ProjectController extends Controller
         });
 
         return response()->json($data);
+    }
+
+    public function store(StoreProjectRequest $request): JsonResponse
+    {
+        $project = Project::create([
+            ...$request->safe()->except('technologies'),
+            'status' => PublishStatus::Draft,
+        ]);
+
+        if ($request->validated('technologies')) {
+            $project->technologies()->attach($request->validated('technologies'));
+            $project->load('technologies');
+        }
+
+        return response()->json([
+            'data' => (new ProjectResource($project))->resolve(),
+            'admin_url' => FilamentProjectResource::getUrl('edit', ['record' => $project]),
+        ], 201);
     }
 
     public function preview(string $slug): ProjectResource
