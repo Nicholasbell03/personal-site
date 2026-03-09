@@ -63,16 +63,22 @@ class XPostingService
             ->withToken($this->buildOAuthHeader($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret), 'OAuth')
             ->post(self::TWEETS_ENDPOINT, $payload);
 
+        if ($response->status() === 402) {
+            Log::warning('XPostingService: X API credits depleted', [
+                'share_id' => $share->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new XCreditsDepletedException("X API credits depleted: {$response->body()}");
+        }
+
         if (! $response->successful()) {
             Log::error('XPostingService: tweet posting failed', [
                 'share_id' => $share->id,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-
-            if ($response->status() === 402) {
-                throw new XCreditsDepletedException("X API credits depleted: {$response->body()}");
-            }
 
             throw new \RuntimeException("X API returned {$response->status()}: {$response->body()}");
         }
