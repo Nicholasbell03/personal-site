@@ -20,7 +20,7 @@ class StoreBlogRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:blogs,slug'],
-            'excerpt' => ['nullable', 'string'],
+            'excerpt' => ['nullable', 'string', 'max:230'],
             'meta_description' => ['nullable', 'string', 'max:255'],
         ];
     }

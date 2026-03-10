@@ -19,7 +19,7 @@ class StoreProjectRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:projects,slug'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:230'],
             'long_description' => ['nullable', 'string'],
             'project_url' => ['nullable', 'url', 'max:2048'],
             'github_url' => ['nullable', 'url', 'max:2048'],
