@@ -8,4 +8,4 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
-Schedule::command('linkedin:check-token')->weeklyOn(1, '09:00');
+// LinkedIn token check is triggered via GET /api/check-linkedin-token (hit by cronjob.org)

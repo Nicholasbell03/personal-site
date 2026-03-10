@@ -26,3 +26,21 @@ Route::get('/warm-cache', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 });
+
+Route::get('/check-linkedin-token', function () {
+    $exitCode = Illuminate\Support\Facades\Artisan::call('linkedin:check-token');
+
+    if ($exitCode !== 0) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'LinkedIn token check failed',
+            'timestamp' => now()->toIso8601String(),
+        ], 503);
+    }
+
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'LinkedIn token is valid',
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
