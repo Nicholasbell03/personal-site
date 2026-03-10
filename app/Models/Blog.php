@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Contracts\DownstreamPostable;
 use App\Enums\PublishStatus;
 use App\Models\Concerns\ClearsApiCache;
+use App\Models\Concerns\HasDownstreamPosting;
 use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
@@ -24,6 +26,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int $read_time
+ * @property string|null $x_post_id
+ * @property string|null $linkedin_post_id
+ * @property bool $post_to_x
+ * @property bool $post_to_linkedin
  * @property array<int, float>|null $embedding
  * @property \Illuminate\Support\Carbon|null $embedding_generated_at
  * @method static \Database\Factories\BlogFactory factory($count = null, $state = [])
@@ -46,12 +52,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static Builder<static>|Blog whereReadTime($value)
  * @mixin \Eloquent
  */
-class Blog extends Model
+class Blog extends Model implements DownstreamPostable
 {
     /** @use HasFactory<\Database\Factories\BlogFactory> */
     use HasFactory;
 
     use ClearsApiCache;
+    use HasDownstreamPosting;
     use HasEmbedding;
     use HasPublishStatus;
     use HasSlug;
@@ -68,6 +75,8 @@ class Blog extends Model
         'status',
         'published_at',
         'meta_description',
+        'post_to_x',
+        'post_to_linkedin',
     ];
 
     /**
@@ -79,6 +88,8 @@ class Blog extends Model
             'status' => PublishStatus::class,
             'published_at' => 'datetime',
             'read_time' => 'integer',
+            'post_to_x' => 'boolean',
+            'post_to_linkedin' => 'boolean',
             'embedding' => 'array',
             'embedding_generated_at' => 'datetime',
         ];
@@ -105,6 +116,21 @@ class Blog extends Model
     public static function getApiCacheKey(): string
     {
         return 'api.v1.blogs';
+    }
+
+    public function getDownstreamUrl(): string
+    {
+        return config('app.frontend_url').'/blog/'.$this->slug;
+    }
+
+    public function getDownstreamTitle(): string
+    {
+        return $this->title;
+    }
+
+    public function getDownstreamDescription(): string
+    {
+        return $this->excerpt ?? $this->meta_description ?? '';
     }
 
     public function getEmbeddableText(): string

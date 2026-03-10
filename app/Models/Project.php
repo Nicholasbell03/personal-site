@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Contracts\DownstreamPostable;
 use App\Enums\PublishStatus;
 use App\Models\Concerns\ClearsApiCache;
+use App\Models\Concerns\HasDownstreamPosting;
 use App\Models\Concerns\HasEmbedding;
 use App\Models\Concerns\HasPublishStatus;
 use App\Models\Concerns\HasSlug;
@@ -27,6 +29,10 @@ use Illuminate\Support\Facades\Cache;
  * @property \Illuminate\Support\Carbon|null $published_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string|null $x_post_id
+ * @property string|null $linkedin_post_id
+ * @property bool $post_to_x
+ * @property bool $post_to_linkedin
  * @property array<int, float>|null $embedding
  * @property \Illuminate\Support\Carbon|null $embedding_generated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Technology> $technologies
@@ -53,12 +59,13 @@ use Illuminate\Support\Facades\Cache;
  * @method static Builder<static>|Project whereUpdatedAt($value)
  * @mixin \Eloquent
  */
-class Project extends Model
+class Project extends Model implements DownstreamPostable
 {
     /** @use HasFactory<\Database\Factories\ProjectFactory> */
     use HasFactory;
 
     use ClearsApiCache;
+    use HasDownstreamPosting;
     use HasEmbedding;
     use HasPublishStatus;
     use HasSlug;
@@ -88,6 +95,8 @@ class Project extends Model
         'is_featured',
         'status',
         'published_at',
+        'post_to_x',
+        'post_to_linkedin',
     ];
 
     /**
@@ -99,6 +108,8 @@ class Project extends Model
             'status' => PublishStatus::class,
             'published_at' => 'datetime',
             'is_featured' => 'boolean',
+            'post_to_x' => 'boolean',
+            'post_to_linkedin' => 'boolean',
             'embedding' => 'array',
             'embedding_generated_at' => 'datetime',
         ];
@@ -133,6 +144,21 @@ class Project extends Model
     public static function getApiCacheKey(): string
     {
         return 'api.v1.projects';
+    }
+
+    public function getDownstreamUrl(): string
+    {
+        return config('app.frontend_url').'/projects/'.$this->slug;
+    }
+
+    public function getDownstreamTitle(): string
+    {
+        return $this->title;
+    }
+
+    public function getDownstreamDescription(): string
+    {
+        return $this->description ?? '';
     }
 
     public function getEmbeddableText(): string
