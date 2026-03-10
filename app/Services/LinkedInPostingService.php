@@ -87,7 +87,7 @@ class LinkedInPostingService
             throw new \RuntimeException("LinkedIn API returned {$response->status()}: {$response->body()}");
         }
 
-        $postUrn = $response->header('x-restli-id') ?? $response->json('id') ?? '';
+        $postUrn = $response->header('x-restli-id') ?: ($response->json('id') ?? '');
 
         if (trim($postUrn) === '') {
             Log::error('LinkedInPostingService: no post URN returned', array_merge([
