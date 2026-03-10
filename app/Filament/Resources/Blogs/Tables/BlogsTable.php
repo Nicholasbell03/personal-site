@@ -9,6 +9,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -23,8 +24,14 @@ class BlogsTable
                 TextColumn::make('title')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('status')
-                    ->badge()
+                ToggleColumn::make('status')
+                    ->label('Published')
+                    ->getStateUsing(fn ($record): bool => $record->status === PublishStatus::Published)
+                    ->updateStateUsing(function ($record, bool $state): void {
+                        $record->update([
+                            'status' => $state ? PublishStatus::Published : PublishStatus::Draft,
+                        ]);
+                    })
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->dateTime()
