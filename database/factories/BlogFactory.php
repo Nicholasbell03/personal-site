@@ -25,7 +25,7 @@ class BlogFactory extends Factory
         return [
             'title' => $title,
             'slug' => Str::slug($title),
-            'excerpt' => fake()->paragraph(),
+            'excerpt' => fake()->text(230),
             'content' => $content,
             'featured_image' => null,
             'status' => PublishStatus::Draft,

@@ -31,7 +31,7 @@ class ProjectFactory extends Factory
         return [
             'title' => $title,
             'slug' => Str::slug($title),
-            'description' => fake()->paragraph(),
+            'description' => fake()->text(230),
             'long_description' => fake()->paragraphs(3, true),
             'featured_image' => null,
             'project_url' => fake()->optional()->url(),
