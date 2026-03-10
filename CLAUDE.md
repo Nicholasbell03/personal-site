@@ -44,6 +44,15 @@ docker compose exec app php artisan <command>
 
 ---
 
+## Production Environment (Render)
+
+This application is deployed on Render's free tier. Key constraints:
+
+- **No persistent scheduler process** — Laravel's `Schedule` cannot run because there is no always-on worker to execute `schedule:run`. Do not add `Schedule::command()` entries expecting them to work in production.
+- **Workaround: cronjob.org** — External cron jobs are configured via [cronjob.org](https://cronjob.org) to hit API routes on a schedule (e.g. `GET /api/warm-cache`, `GET /api/check-linkedin-token`). When adding new scheduled tasks, create a public API route that returns 200 on success and a non-200 status on failure, so cronjob.org's built-in failure detection can send email alerts.
+
+---
+
 ## Related Frontend Repository
 
 This Laravel backend serves as the API for a React frontend located at `../nickbell-frontend`.

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Blogs\Schemas;
 
 use App\Enums\PublishStatus;
+use App\Filament\Schemas\DownstreamPostingFields;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -45,7 +46,8 @@ class BlogForm
                             ->columnSpanFull(),
                         Textarea::make('excerpt')
                             ->rows(3)
-                            ->helperText('Leave blank to generate from content')
+                            ->maxLength(230)
+                            ->helperText('Leave blank to generate from content. Max 230 characters for social posting.')
                             ->columnSpanFull(),
                     ])
                     ->columns(2)
@@ -58,6 +60,7 @@ class BlogForm
                                     ->options(PublishStatus::class)
                                     ->default(PublishStatus::Draft)
                                     ->required(),
+                                ...DownstreamPostingFields::make(),
                             ]),
                         Section::make('SEO')
                             ->schema([

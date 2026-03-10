@@ -89,6 +89,62 @@ it('throws when successful x response is missing data id', function () {
         ->toThrow(\RuntimeException::class, 'malformed X API response payload');
 });
 
+it('postText posts text and returns tweet data', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => ['id' => '999', 'text' => 'Hello world'],
+        ], 201),
+    ]);
+
+    $service = new XPostingService;
+    $result = $service->postText('Hello world', ['blog_id' => 1]);
+
+    expect($result)
+        ->toHaveKey('id', '999')
+        ->toHaveKey('text', 'Hello world');
+});
+
+it('postText throws XCreditsDepletedException on 402', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'title' => 'CreditsDepleted',
+        ], 402),
+    ]);
+
+    $service = new XPostingService;
+
+    expect(fn () => $service->postText('Test text'))
+        ->toThrow(XCreditsDepletedException::class);
+});
+
+it('postText throws RuntimeException when credentials missing', function () {
+    config([
+        'services.x.api_key' => null,
+        'services.x.api_secret' => null,
+        'services.x.access_token' => null,
+        'services.x.access_token_secret' => null,
+    ]);
+
+    $service = new XPostingService;
+
+    expect(fn () => $service->postText('Test text'))
+        ->toThrow(\RuntimeException::class, 'missing X/Twitter OAuth credentials');
+});
+
 it('throws XCreditsDepletedException on 402 response', function () {
     config([
         'services.x.api_key' => 'test-key',

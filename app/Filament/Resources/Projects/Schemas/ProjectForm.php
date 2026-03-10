@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Projects\Schemas;
 
 use App\Enums\PublishStatus;
+use App\Filament\Schemas\DownstreamPostingFields;
 use App\Models\Technology;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -43,7 +44,8 @@ class ProjectForm
                             ->columnSpanFull(),
                         Textarea::make('description')
                             ->rows(3)
-                            ->helperText('Short description for listings')
+                            ->maxLength(230)
+                            ->helperText('Short description for listings. Max 230 characters for social posting.')
                             ->columnSpanFull(),
                         Textarea::make('long_description')
                             ->rows(20)
@@ -62,6 +64,7 @@ class ProjectForm
                                 Toggle::make('is_featured')
                                     ->label('Featured Project')
                                     ->helperText('Show on homepage'),
+                                ...DownstreamPostingFields::make(),
                             ]),
                         Section::make('Links')
                             ->schema([

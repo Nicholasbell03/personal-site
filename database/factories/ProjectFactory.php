@@ -31,7 +31,7 @@ class ProjectFactory extends Factory
         return [
             'title' => $title,
             'slug' => Str::slug($title),
-            'description' => fake()->paragraph(),
+            'description' => fake()->text(230),
             'long_description' => fake()->paragraphs(3, true),
             'featured_image' => null,
             'project_url' => fake()->optional()->url(),
@@ -39,6 +39,8 @@ class ProjectFactory extends Factory
             'is_featured' => false,
             'status' => PublishStatus::Draft,
             'published_at' => null,
+            'post_to_x' => true,
+            'post_to_linkedin' => true,
         ];
     }
 
@@ -62,6 +64,20 @@ class ProjectFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_featured' => true,
+        ]);
+    }
+
+    public function postedToX(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'x_post_id' => (string) fake()->unique()->numberBetween(1000000000, 9999999999),
+        ]);
+    }
+
+    public function postedToLinkedIn(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'linkedin_post_id' => 'urn:li:share:'.fake()->unique()->numberBetween(1000000000, 9999999999),
         ]);
     }
 }

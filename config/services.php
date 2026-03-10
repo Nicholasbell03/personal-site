@@ -62,4 +62,9 @@ return [
         'access_token_secret' => env('X_ACCESS_TOKEN_SECRET'),
     ],
 
+    'linkedin' => [
+        'access_token' => env('LINKEDIN_ACCESS_TOKEN'),
+        'person_id' => env('LINKEDIN_PERSON_ID'),
+    ],
+
 ];

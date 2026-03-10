@@ -42,6 +42,41 @@ class XPostingService
      */
     public function postTweet(Share $share): array
     {
+        $text = $this->composeTweet($share);
+        $payload = ['text' => $text];
+
+        if ($share->source_type === SourceType::XPost && ! empty($share->embed_data['tweet_id'])) {
+            $payload['quote_tweet_id'] = $share->embed_data['tweet_id'];
+        }
+
+        return $this->sendPayload($payload, ['share_id' => $share->id]);
+    }
+
+    /**
+     * Post arbitrary text as a tweet.
+     *
+     * @param  array<string, mixed>  $logContext
+     * @return array{id: string, text: string}
+     *
+     * @throws \RuntimeException
+     */
+    public function postText(string $text, array $logContext = []): array
+    {
+        return $this->sendPayload(['text' => $text], $logContext);
+    }
+
+    /**
+     * Send a payload to the X API and handle the response.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $logContext
+     * @return array{id: string, text: string}
+     *
+     * @throws XCreditsDepletedException
+     * @throws \RuntimeException
+     */
+    private function sendPayload(array $payload, array $logContext = []): array
+    {
         $consumerKey = config('services.x.api_key');
         $consumerSecret = config('services.x.api_secret');
         $accessToken = config('services.x.access_token');
@@ -51,34 +86,25 @@ class XPostingService
             throw new \RuntimeException('XPostingService: missing X/Twitter OAuth credentials');
         }
 
-        $text = $this->composeTweet($share);
-        $payload = ['text' => $text];
-
-        if ($share->source_type === SourceType::XPost && ! empty($share->embed_data['tweet_id'])) {
-            $payload['quote_tweet_id'] = $share->embed_data['tweet_id'];
-        }
-
         /** @var Response $response */
         $response = Http::asJson()
             ->withToken($this->buildOAuthHeader($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret), 'OAuth')
             ->post(self::TWEETS_ENDPOINT, $payload);
 
         if ($response->status() === 402) {
-            Log::warning('XPostingService: X API credits depleted', [
-                'share_id' => $share->id,
+            Log::warning('XPostingService: X API credits depleted', array_merge([
                 'status' => $response->status(),
                 'body' => $response->body(),
-            ]);
+            ], $logContext));
 
             throw new XCreditsDepletedException("X API credits depleted: {$response->body()}");
         }
 
         if (! $response->successful()) {
-            Log::error('XPostingService: tweet posting failed', [
-                'share_id' => $share->id,
+            Log::error('XPostingService: tweet posting failed', array_merge([
                 'status' => $response->status(),
                 'body' => $response->body(),
-            ]);
+            ], $logContext));
 
             throw new \RuntimeException("X API returned {$response->status()}: {$response->body()}");
         }
@@ -86,11 +112,10 @@ class XPostingService
         $data = $response->json('data');
 
         if (! is_array($data) || ! isset($data['id']) || ! is_string($data['id']) || trim($data['id']) === '') {
-            Log::error('XPostingService: malformed success payload from X API', [
-                'share_id' => $share->id,
+            Log::error('XPostingService: malformed success payload from X API', array_merge([
                 'status' => $response->status(),
                 'body' => $response->body(),
-            ]);
+            ], $logContext));
 
             throw new \RuntimeException('XPostingService: malformed X API response payload');
         }
@@ -100,10 +125,9 @@ class XPostingService
             'text' => isset($data['text']) && is_string($data['text']) ? $data['text'] : '',
         ];
 
-        Log::info('XPostingService: tweet posted', [
-            'share_id' => $share->id,
+        Log::info('XPostingService: tweet posted', array_merge([
             'tweet_id' => $normalizedData['id'],
-        ]);
+        ], $logContext));
 
         return $normalizedData;
     }
