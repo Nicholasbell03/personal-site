@@ -65,12 +65,16 @@ class PostContentToXJob implements ShouldQueue
                 return;
             }
 
-            $description = $model->getDownstreamDescription();
+            $description = trim($model->getDownstreamDescription());
             $url = $model->getDownstreamUrl();
 
-            $maxLength = 280 - 23 - 2; // TCO URL length + \n\n
-            $description = mb_substr($description, 0, $maxLength);
-            $text = "{$description}\n\n{$url}";
+            if ($description !== '') {
+                $maxLength = 280 - 23 - 2; // TCO URL length + \n\n
+                $description = mb_substr($description, 0, $maxLength);
+                $text = "{$description}\n\n{$url}";
+            } else {
+                $text = $url;
+            }
 
             $logContext = ['model' => $this->model::class, 'id' => $id];
 

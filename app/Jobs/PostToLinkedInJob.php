@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Contracts\DownstreamPostable;
+use App\Exceptions\LinkedInPermissionDeniedException;
 use App\Exceptions\LinkedInTokenExpiredException;
 use App\Models\Blog;
 use App\Models\Project;
@@ -69,8 +70,10 @@ class PostToLinkedInJob implements ShouldQueue
 
             try {
                 $postUrn = $linkedInPostingService->post($model, $logContext);
-            } catch (LinkedInTokenExpiredException $e) {
-                Log::warning('PostToLinkedInJob: LinkedIn token expired, will not retry', $logContext);
+            } catch (LinkedInTokenExpiredException|LinkedInPermissionDeniedException $e) {
+                Log::warning('PostToLinkedInJob: LinkedIn auth/permission error, will not retry', array_merge($logContext, [
+                    'exception' => $e->getMessage(),
+                ]));
                 $this->fail($e);
 
                 return;

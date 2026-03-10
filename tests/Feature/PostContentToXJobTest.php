@@ -205,3 +205,25 @@ it('truncates long descriptions to fit tweet limit', function () {
 
     (new PostContentToXJob($blog))->handle($mockService);
 });
+
+it('posts url only when description is empty', function () {
+    Queue::fake();
+
+    $blog = Blog::factory()->published()->create([
+        'excerpt' => null,
+        'meta_description' => null,
+        'post_to_x' => true,
+    ]);
+
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    $mockService = Mockery::mock(XPostingService::class);
+    $mockService->shouldReceive('postText')
+        ->once()
+        ->withArgs(function (string $text) {
+            return ! str_contains($text, "\n\n");
+        })
+        ->andReturn(['id' => '456', 'text' => 'url only']);
+
+    (new PostContentToXJob($blog))->handle($mockService);
+});

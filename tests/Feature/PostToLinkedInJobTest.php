@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\LinkedInPermissionDeniedException;
 use App\Exceptions\LinkedInTokenExpiredException;
 use App\Jobs\PostToLinkedInJob;
 use App\Models\Blog;
@@ -124,6 +125,30 @@ it('fails permanently when linkedin token is expired', function () {
     $mockService->shouldReceive('post')
         ->once()
         ->andThrow(new LinkedInTokenExpiredException('Token expired'));
+
+    $job = new PostToLinkedInJob($blog);
+    $job->handle($mockService);
+
+    $blog->refresh();
+
+    expect($blog->linkedin_post_id)->toBeNull();
+    expect($job->job)->toBeNull();
+});
+
+it('fails permanently when linkedin permission is denied', function () {
+    Queue::fake();
+
+    $blog = Blog::factory()->published()->create([
+        'excerpt' => 'Test excerpt',
+        'post_to_linkedin' => true,
+    ]);
+
+    Queue::swap(new \Illuminate\Support\Testing\Fakes\QueueFake(app()));
+
+    $mockService = Mockery::mock(LinkedInPostingService::class);
+    $mockService->shouldReceive('post')
+        ->once()
+        ->andThrow(new LinkedInPermissionDeniedException('Permission denied'));
 
     $job = new PostToLinkedInJob($blog);
     $job->handle($mockService);

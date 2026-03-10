@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\DownstreamPostable;
+use App\Exceptions\LinkedInPermissionDeniedException;
 use App\Exceptions\LinkedInTokenExpiredException;
 use App\Services\LinkedInPostingService;
 use Illuminate\Support\Facades\Http;
@@ -80,6 +81,23 @@ it('throws LinkedInTokenExpiredException on 401 response', function () {
 
     expect(fn () => $service->post($postable))
         ->toThrow(LinkedInTokenExpiredException::class);
+});
+
+it('throws LinkedInPermissionDeniedException on 403 response', function () {
+    Http::fake([
+        'https://api.linkedin.com/rest/posts' => Http::response(['message' => 'Forbidden'], 403),
+    ]);
+
+    $postable = Mockery::mock(DownstreamPostable::class);
+    $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
+    $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
+    $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
+    $postable->shouldReceive('getDownstreamImageUrl')->andReturn(null);
+
+    $service = new LinkedInPostingService;
+
+    expect(fn () => $service->post($postable))
+        ->toThrow(LinkedInPermissionDeniedException::class);
 });
 
 it('throws RuntimeException on other error responses', function () {

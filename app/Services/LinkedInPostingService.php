@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\DownstreamPostable;
+use App\Exceptions\LinkedInPermissionDeniedException;
 use App\Exceptions\LinkedInTokenExpiredException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -75,7 +76,7 @@ class LinkedInPostingService
                 'body' => $response->body(),
             ], $logContext));
 
-            throw new LinkedInTokenExpiredException("LinkedIn permission denied: {$response->body()}");
+            throw new LinkedInPermissionDeniedException("LinkedIn permission denied: {$response->body()}");
         }
 
         if (! $response->successful()) {
