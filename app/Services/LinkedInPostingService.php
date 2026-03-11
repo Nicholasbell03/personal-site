@@ -57,7 +57,7 @@ class LinkedInPostingService
         $response = Http::asJson()
             ->withToken($accessToken)
             ->withHeaders([
-                'LinkedIn-Version' => '202502',
+                'LinkedIn-Version' => config('services.linkedin.api_version'),
             ])
             ->post(self::POSTS_ENDPOINT, $payload);
 
