@@ -17,6 +17,13 @@ use Illuminate\Support\Str;
 
 class ShareForm
 {
+    private static function postToXToggle(): Toggle
+    {
+        return Toggle::make('post_to_x')
+            ->label('Post to X/Twitter')
+            ->default(true);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -67,9 +74,7 @@ class ShareForm
                             ->rows(3)
                             ->helperText('AI-generated summary for card display and tweets. Leave blank to auto-generate.')
                             ->columnSpanFull(),
-                        Toggle::make('post_to_x')
-                            ->label('Post to X/Twitter')
-                            ->default(true)
+                        self::postToXToggle()
                             ->visible(fn ($record) => $record === null),
                     ])
                     ->columns(2)
@@ -84,9 +89,7 @@ class ShareForm
                                     ->label('Embedding'),
                                 DownstreamPostingFields::xStatusPlaceholder()
                                     ->label('X/Twitter'),
-                                Toggle::make('post_to_x')
-                                    ->label('Post to X/Twitter')
-                                    ->default(true),
+                                self::postToXToggle(),
                             ]),
                     ]),
             ]);
