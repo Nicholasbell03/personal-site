@@ -13,6 +13,7 @@ beforeEach(function () {
     config([
         'services.linkedin.access_token' => 'test-token',
         'services.linkedin.person_id' => 'test-person-id',
+        'services.linkedin.api_version' => '202601',
     ]);
 });
 
@@ -36,7 +37,7 @@ it('posts successfully and returns post urn', function () {
 
     Http::assertSent(function ($request) {
         return $request->url() === 'https://api.linkedin.com/rest/posts'
-            && $request->header('LinkedIn-Version')[0] === '202502'
+            && $request->header('LinkedIn-Version')[0] === '202601'
             && $request['author'] === 'urn:li:person:test-person-id'
             && $request['content']['article']['source'] === 'https://nickbell.dev/blog/test'
             && $request['content']['article']['thumbnail'] === 'https://cdn.example.com/image.jpg';

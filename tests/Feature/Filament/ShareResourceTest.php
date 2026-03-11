@@ -6,6 +6,7 @@ use App\Filament\Resources\Shares\Pages\EditShare;
 use App\Filament\Resources\Shares\Pages\ListShares;
 use App\Filament\Resources\Shares\ShareResource;
 use App\Jobs\GenerateEmbeddingJob;
+use App\Jobs\PostToXJob;
 use App\Models\Share;
 use App\Models\User;
 use App\Services\OpenGraphService;
@@ -282,14 +283,14 @@ it('shows regenerate embedding action on edit page when embedding is missing', f
         ->assertActionVisible('regenerateEmbedding');
 });
 
-it('hides regenerate embedding action on edit page when embedding exists', function () {
+it('shows regenerate embedding action on edit page when embedding exists', function () {
     Queue::fake();
 
     $share = Share::factory()->create(['embedding_generated_at' => now()]);
 
     Livewire::actingAs($this->user)
         ->test(EditShare::class, ['record' => $share->id])
-        ->assertActionHidden('regenerateEmbedding');
+        ->assertActionVisible('regenerateEmbedding');
 });
 
 it('dispatches embedding job via regenerate embedding action on edit page', function () {
@@ -315,4 +316,33 @@ it('dispatches embedding job via regenerate embedding table action', function ()
         ->callTableAction('regenerateEmbedding', $share);
 
     Queue::assertPushed(GenerateEmbeddingJob::class, fn ($job) => $job->model->is($share));
+});
+
+it('shows post to X action when x_post_id is null', function () {
+    $share = Share::factory()->create(['x_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->assertActionVisible('postToX');
+});
+
+it('hides post to X action when x_post_id is set', function () {
+    $share = Share::factory()->create(['x_post_id' => '123456']);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->assertActionHidden('postToX');
+});
+
+it('dispatches post to X job via action on edit page', function () {
+    Queue::fake();
+
+    $share = Share::factory()->create(['x_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditShare::class, ['record' => $share->id])
+        ->callAction('postToX')
+        ->assertNotified('X/Twitter post job dispatched');
+
+    Queue::assertPushed(PostToXJob::class, fn ($job) => $job->share->is($share));
 });

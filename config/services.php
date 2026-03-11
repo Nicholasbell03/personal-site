@@ -65,6 +65,7 @@ return [
     'linkedin' => [
         'access_token' => env('LINKEDIN_ACCESS_TOKEN'),
         'person_id' => env('LINKEDIN_PERSON_ID'),
+        'api_version' => env('LINKEDIN_API_VERSION', '202601'),
     ],
 
 ];

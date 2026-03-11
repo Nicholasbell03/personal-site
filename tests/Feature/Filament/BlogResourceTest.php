@@ -5,9 +5,12 @@ use App\Filament\Resources\Blogs\BlogResource;
 use App\Filament\Resources\Blogs\Pages\CreateBlog;
 use App\Filament\Resources\Blogs\Pages\EditBlog;
 use App\Filament\Resources\Blogs\Pages\ListBlogs;
+use App\Jobs\PostContentToXJob;
+use App\Jobs\PostToLinkedInJob;
 use App\Models\Blog;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -183,4 +186,75 @@ it('preserves existing published_at when already published', function () {
     $blog->refresh();
     expect($blog->published_at->toDateTimeString())
         ->toBe($originalPublishedAt->toDateTimeString());
+});
+
+it('shows post to X action when x_post_id is null', function () {
+    $blog = Blog::factory()->create(['x_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->assertActionVisible('postToX');
+});
+
+it('hides post to X action when x_post_id is set', function () {
+    $blog = Blog::factory()->create(['x_post_id' => '123456']);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->assertActionHidden('postToX');
+});
+
+it('dispatches post to X job via action', function () {
+    Queue::fake();
+
+    $blog = Blog::factory()->create(['x_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->callAction('postToX')
+        ->assertNotified('X/Twitter post job dispatched');
+
+    Queue::assertPushed(PostContentToXJob::class, fn ($job) => $job->model->is($blog));
+});
+
+it('shows post to LinkedIn action when linkedin_post_id is null', function () {
+    $blog = Blog::factory()->create(['linkedin_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->assertActionVisible('postToLinkedIn');
+});
+
+it('hides post to LinkedIn action when linkedin_post_id is set', function () {
+    $blog = Blog::factory()->create(['linkedin_post_id' => 'urn:li:share:123']);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->assertActionHidden('postToLinkedIn');
+});
+
+it('dispatches post to LinkedIn job via action', function () {
+    Queue::fake();
+
+    $blog = Blog::factory()->create(['linkedin_post_id' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blog->id])
+        ->callAction('postToLinkedIn')
+        ->assertNotified('LinkedIn post job dispatched');
+
+    Queue::assertPushed(PostToLinkedInJob::class, fn ($job) => $job->model->is($blog));
+});
+
+it('shows regenerate embedding action regardless of embedding status', function () {
+    $blogWithEmbedding = Blog::factory()->create(['embedding_generated_at' => now()]);
+    $blogWithoutEmbedding = Blog::factory()->create(['embedding_generated_at' => null]);
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blogWithEmbedding->id])
+        ->assertActionVisible('regenerateEmbedding');
+
+    Livewire::actingAs($this->user)
+        ->test(EditBlog::class, ['record' => $blogWithoutEmbedding->id])
+        ->assertActionVisible('regenerateEmbedding');
 });

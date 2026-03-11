@@ -20,14 +20,15 @@ class RegenerateEmbeddingAction extends Action
     {
         parent::setUp();
 
+        $needsGeneration = fn ($record): bool => $record instanceof Model
+            && $record->getAttribute('embedding_generated_at') === null;
+
         $this
             ->icon(Heroicon::OutlinedCpuChip)
-            ->color('warning')
-            ->label('Generate Embedding')
-            ->visible(fn ($record): bool => $record instanceof Model
-                && $record->getAttribute('embedding_generated_at') === null)
+            ->color(fn ($record): string => $needsGeneration($record) ? 'warning' : 'gray')
+            ->label(fn ($record): string => $needsGeneration($record) ? 'Generate Embedding' : 'Regenerate Embedding')
             ->requiresConfirmation()
-            ->modalHeading('Generate Embedding')
+            ->modalHeading(fn ($record): string => $needsGeneration($record) ? 'Generate Embedding' : 'Regenerate Embedding')
             ->modalDescription('This will dispatch a job to generate the embedding for this record. Continue?')
             ->action(function ($record): void {
                 try {
