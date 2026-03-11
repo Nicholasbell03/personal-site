@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Blogs\Pages;
 
+use App\Filament\Actions\PostToLinkedInAction;
+use App\Filament\Actions\PostToXAction;
+use App\Filament\Actions\PreviewAction;
 use App\Filament\Actions\RegenerateEmbeddingAction;
 use App\Filament\Resources\Blogs\BlogResource;
 use Filament\Actions\DeleteAction;
@@ -15,9 +18,12 @@ class EditBlog extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            PreviewAction::make()->previewPath('blog'),
             ViewAction::make(),
             DeleteAction::make(),
             RegenerateEmbeddingAction::make(),
+            PostToXAction::make(),
+            PostToLinkedInAction::make(),
         ];
     }
 }

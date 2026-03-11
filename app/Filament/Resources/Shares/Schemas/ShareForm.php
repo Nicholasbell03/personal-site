@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\Shares\Schemas;
 
 use App\Enums\SourceType;
+use App\Filament\Schemas\DownstreamPostingFields;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -67,10 +69,26 @@ class ShareForm
                             ->columnSpanFull(),
                         Toggle::make('post_to_x')
                             ->label('Post to X/Twitter')
-                            ->default(true),
+                            ->default(true)
+                            ->visible(fn ($record) => $record === null),
                     ])
                     ->columns(2)
-                    ->columnSpan(4),
+                    ->columnSpan(fn ($record) => $record !== null ? 3 : 4),
+                Grid::make(1)
+                    ->columnSpan(1)
+                    ->visible(fn ($record) => $record !== null)
+                    ->schema([
+                        Section::make('Integration Status')
+                            ->schema([
+                                DownstreamPostingFields::embeddingStatusPlaceholder()
+                                    ->label('Embedding'),
+                                DownstreamPostingFields::xStatusPlaceholder()
+                                    ->label('X/Twitter'),
+                                Toggle::make('post_to_x')
+                                    ->label('Post to X/Twitter')
+                                    ->default(true),
+                            ]),
+                    ]),
             ]);
     }
 }
