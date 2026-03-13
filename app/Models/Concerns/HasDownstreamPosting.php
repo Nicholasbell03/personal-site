@@ -15,7 +15,7 @@ trait HasDownstreamPosting
             return null;
         }
 
-        return Storage::disk('public')->url($this->featured_image);
+        return Storage::url($this->featured_image);
     }
 
     public static function bootHasDownstreamPosting(): void
