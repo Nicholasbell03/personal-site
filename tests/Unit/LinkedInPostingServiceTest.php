@@ -109,6 +109,36 @@ it('posts without thumbnail when image download fails', function () {
     expect($result)->toBe('urn:li:share:456');
 });
 
+it('returns empty string when no post URN is returned', function () {
+    Http::fake([
+        'https://api.linkedin.com/rest/posts' => Http::response(null, 201),
+    ]);
+
+    $service = new LinkedInPostingService;
+    $result = $service->post(mockPostable());
+
+    expect($result)->toBe('');
+});
+
+it('posts without thumbnail when upload throws an exception', function () {
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), 'rest/images')) {
+            throw new \RuntimeException('Connection timed out');
+        }
+
+        if ($request->url() === 'https://api.linkedin.com/rest/posts') {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:999']);
+        }
+
+        return Http::response('fake-image-bytes', 200);
+    });
+
+    $service = new LinkedInPostingService;
+    $result = $service->post(mockPostable('https://api.nickbell.dev/storage/blog-images/test.jpg'));
+
+    expect($result)->toBe('urn:li:share:999');
+});
+
 it('throws LinkedInTokenExpiredException on 401 response', function () {
     Http::fake([
         'https://api.linkedin.com/rest/posts' => Http::response(['message' => 'Unauthorized'], 401),

@@ -130,7 +130,7 @@ class LinkedInPostingService
             // Run image download and LinkedIn upload init in parallel
             $responses = Http::pool(fn ($pool) => [
                 $pool->as('image')->timeout(15)->get($imageUrl),
-                $pool->as('init')->asJson()
+                $pool->as('init')->timeout(15)->asJson()
                     ->withToken($this->accessToken)
                     ->withHeaders(['LinkedIn-Version' => config('services.linkedin.api_version')])
                     ->post(self::IMAGES_ENDPOINT, [
@@ -191,8 +191,10 @@ class LinkedInPostingService
 
             return $imageUrn;
         } catch (\Throwable $e) {
-            Log::warning('LinkedInPostingService: thumbnail upload threw exception, posting without thumbnail', array_merge([
+            Log::error('LinkedInPostingService: thumbnail upload threw exception, posting without thumbnail', array_merge([
                 'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'image_url' => $imageUrl,
             ], $logContext));
 
             return null;
