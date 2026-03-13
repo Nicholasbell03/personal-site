@@ -170,10 +170,7 @@ class LinkedInPostingService
             }
 
             $uploadResponse = Http::withToken($this->accessToken)
-                ->withHeaders([
-                    'Content-Type' => 'application/octet-stream',
-                ])
-                ->withBody($responses['image']->body())
+                ->withBody($responses['image']->body(), 'application/octet-stream')
                 ->put($uploadUrl);
 
             if (! $uploadResponse->successful()) {
