@@ -23,6 +23,8 @@ class PostToLinkedInJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    public const POSTED_WITHOUT_URN = 'posted';
+
     public int $tries = 3;
 
     /** @var list<int> */
@@ -82,7 +84,7 @@ class PostToLinkedInJob implements ShouldQueue
             $updated = $this->model::query()
                 ->whereKey($id)
                 ->whereNull('linkedin_post_id')
-                ->update(['linkedin_post_id' => $postUrn]);
+                ->update(['linkedin_post_id' => $postUrn ?: self::POSTED_WITHOUT_URN]);
 
             if ($updated === 0) {
                 Log::warning('PostToLinkedInJob: skipped saving linkedin_post_id because content was already posted', array_merge($logContext, [
