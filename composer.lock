@@ -4783,26 +4783,26 @@
         },
         {
             "name": "prism-php/prism",
-            "version": "v0.99.19",
+            "version": "v0.99.21",
             "source": {
                 "type": "git",
                 "url": "https://github.com/prism-php/prism.git",
-                "reference": "7ebf450f6137fcb6d79cc52f5bffb6d7569b2019"
+                "reference": "95272567629a62831294f63b1b927b1e2e608daf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/prism-php/prism/zipball/7ebf450f6137fcb6d79cc52f5bffb6d7569b2019",
-                "reference": "7ebf450f6137fcb6d79cc52f5bffb6d7569b2019",
+                "url": "https://api.github.com/repos/prism-php/prism/zipball/95272567629a62831294f63b1b927b1e2e608daf",
+                "reference": "95272567629a62831294f63b1b927b1e2e608daf",
                 "shasum": ""
             },
             "require": {
                 "ext-fileinfo": "*",
-                "laravel/framework": "^11.0|^12.0",
+                "laravel/framework": "^11.0|^12.0|^13.0",
                 "php": "^8.2"
             },
             "require-dev": {
                 "brianium/paratest": "^7.8.4",
-                "laravel/mcp": "^0.5.2",
+                "laravel/mcp": "^0.6.0",
                 "laravel/pint": "^1.14",
                 "mockery/mockery": "^1.6",
                 "orchestra/testbench": "^10",
@@ -4850,7 +4850,7 @@
             "description": "A powerful Laravel package for integrating Large Language Models (LLMs) into your applications.",
             "support": {
                 "issues": "https://github.com/prism-php/prism/issues",
-                "source": "https://github.com/prism-php/prism/tree/v0.99.19"
+                "source": "https://github.com/prism-php/prism/tree/v0.99.21"
             },
             "funding": [
                 {
@@ -4858,7 +4858,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-01-28T12:09:02+00:00"
+            "time": "2026-03-01T21:12:44+00:00"
         },
         {
             "name": "psr/clock",
