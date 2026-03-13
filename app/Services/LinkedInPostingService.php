@@ -31,7 +31,6 @@ class LinkedInPostingService
         }
 
         $description = $postable->getDownstreamDescription();
-        $imageUrl = $postable->getDownstreamImageUrl();
 
         $payload = [
             'author' => "urn:li:person:{$personId}",
@@ -50,9 +49,9 @@ class LinkedInPostingService
             'lifecycleState' => 'PUBLISHED',
             'isReshareDisabledByAuthor' => false,
         ];
-        if ($imageUrl) {
-            $payload['content']['article']['thumbnail'] = $imageUrl;
-        }
+        // Note: LinkedIn's thumbnail field requires a urn:li:image URN from their
+        // Images API, not a raw URL. We omit it here and let LinkedIn auto-scrape
+        // the Open Graph image from the article URL instead.
 
         $response = Http::asJson()
             ->withToken($accessToken)

@@ -25,10 +25,10 @@ it('posts successfully and returns post urn', function () {
     ]);
 
     $postable = Mockery::mock(DownstreamPostable::class);
+    $postable = Mockery::mock(DownstreamPostable::class);
     $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
     $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
     $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
-    $postable->shouldReceive('getDownstreamImageUrl')->andReturn('https://cdn.example.com/image.jpg');
 
     $service = new LinkedInPostingService;
     $result = $service->post($postable);
@@ -40,30 +40,7 @@ it('posts successfully and returns post urn', function () {
             && $request->header('LinkedIn-Version')[0] === '202601'
             && $request['author'] === 'urn:li:person:test-person-id'
             && $request['content']['article']['source'] === 'https://nickbell.dev/blog/test'
-            && $request['content']['article']['thumbnail'] === 'https://cdn.example.com/image.jpg';
-    });
-});
-
-it('omits thumbnail when image url is null', function () {
-    Http::fake([
-        'https://api.linkedin.com/rest/posts' => Http::response(null, 201, [
-            'x-restli-id' => 'urn:li:share:789',
-        ]),
-    ]);
-
-    $postable = Mockery::mock(DownstreamPostable::class);
-    $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
-    $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
-    $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
-    $postable->shouldReceive('getDownstreamImageUrl')->andReturn(null);
-
-    $service = new LinkedInPostingService;
-    $result = $service->post($postable);
-
-    expect($result)->toBe('urn:li:share:789');
-
-    Http::assertSent(function ($request) {
-        return ! isset($request['content']['article']['thumbnail']);
+            && ! isset($request['content']['article']['thumbnail']);
     });
 });
 
@@ -76,7 +53,7 @@ it('throws LinkedInTokenExpiredException on 401 response', function () {
     $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
     $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
     $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
-    $postable->shouldReceive('getDownstreamImageUrl')->andReturn(null);
+
 
     $service = new LinkedInPostingService;
 
@@ -93,7 +70,7 @@ it('throws LinkedInPermissionDeniedException on 403 response', function () {
     $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
     $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
     $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
-    $postable->shouldReceive('getDownstreamImageUrl')->andReturn(null);
+
 
     $service = new LinkedInPostingService;
 
@@ -110,7 +87,7 @@ it('throws RuntimeException on other error responses', function () {
     $postable->shouldReceive('getDownstreamUrl')->andReturn('https://nickbell.dev/blog/test');
     $postable->shouldReceive('getDownstreamTitle')->andReturn('Test Blog');
     $postable->shouldReceive('getDownstreamDescription')->andReturn('A test description.');
-    $postable->shouldReceive('getDownstreamImageUrl')->andReturn(null);
+
 
     $service = new LinkedInPostingService;
 
