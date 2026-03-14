@@ -83,3 +83,23 @@ it('returns null embed data for linkedin', function () {
     expect($result)->toBeNull();
 });
 
+it('decodes double-encoded HTML entities in OG tag values', function (string $html, string $expectedTitle) {
+    $method = new ReflectionMethod(OpenGraphService::class, 'parseOgTags');
+    $tags = $method->invoke($this->service, $html);
+
+    expect($tags['og:title'])->toBe($expectedTitle);
+})->with([
+    'named entities (apostrophes)' => [
+        '<html><head><meta property="og:title" content="Anthropic just 5x&amp;#39;d Claude Code&amp;#39;s context to 1M" /></head><body></body></html>',
+        "Anthropic just 5x'd Claude Code's context to 1M",
+    ],
+    'numeric entities (ellipsis)' => [
+        '<html><head><meta property="og:title" content="command and&amp;#8230; more" /></head><body></body></html>',
+        "command and\u{2026} more",
+    ],
+    'ampersand entities' => [
+        '<html><head><meta property="og:title" content="It&amp;amp;s a game changer" /></head><body></body></html>',
+        "It&s a game changer",
+    ],
+]);
+
