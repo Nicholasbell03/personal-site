@@ -490,7 +490,15 @@ class OpenGraphService
             }
         }
 
-        return $tags;
+        return array_map(fn (string $value): string => $this->cleanMetaText($value), $tags);
+    }
+
+    /**
+     * Decode HTML entities that may appear in meta tag content values.
+     */
+    private function cleanMetaText(string $text): string
+    {
+        return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     // ── Helpers (private) ───────────────────────────────────────

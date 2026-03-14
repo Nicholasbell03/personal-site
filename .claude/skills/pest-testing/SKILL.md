@@ -45,10 +45,9 @@ it('is true', function () {
 
 ### Running Tests
 
-- Always prefer `--parallel` for faster execution.
-- Run minimal tests with filter before finalizing: `php artisan test --parallel --compact --filter=testName`.
-- Run all tests: `php artisan test --parallel --compact`.
-- Run file: `php artisan test --parallel --compact tests/Feature/ExampleTest.php`.
+- Run minimal tests with filter before finalizing: `php artisan test --compact --filter=testName`.
+- Run all tests: `php artisan test --compact`.
+- Run file: `php artisan test --compact tests/Feature/ExampleTest.php`.
 
 ## Assertions
 
