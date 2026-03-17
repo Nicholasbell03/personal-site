@@ -108,8 +108,12 @@ class ShareController extends Controller
             'post_to_x' => $validated['post_to_x'] ?? true,
         ]);
 
-        return (new ShareResource($share))
-            ->response()
-            ->setStatusCode(201);
+        $resource = new ShareResource($share);
+
+        if ($share->creationWarnings !== []) {
+            $resource->additional(['meta' => ['warnings' => $share->creationWarnings]]);
+        }
+
+        return $resource->response()->setStatusCode(201);
     }
 }

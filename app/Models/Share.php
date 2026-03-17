@@ -48,6 +48,9 @@ class Share extends Model
     use HasSlug;
     use HasSummary;
 
+    /** @var list<string> Runtime-only warnings from post-creation jobs (not persisted) */
+    public array $creationWarnings = [];
+
     /**
      * @var list<string>
      */
