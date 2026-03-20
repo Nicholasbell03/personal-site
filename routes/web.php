@@ -22,4 +22,6 @@ Route::get('/test', function () {
     ]);
 });
 
+Route::get('/feed', \App\Http\Controllers\FeedController::class)->name('feed.rss');
+
 require __DIR__.'/auth.php';
