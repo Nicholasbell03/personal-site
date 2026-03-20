@@ -117,6 +117,10 @@ return [
     |
     */
 
-    'serializable_classes' => false,
+    'serializable_classes' => [
+        \App\DataTransferObjects\ContributionActivity::class,
+        \App\DataTransferObjects\ContributionDay::class,
+        \App\DataTransferObjects\ContributionStats::class,
+    ],
 
 ];
