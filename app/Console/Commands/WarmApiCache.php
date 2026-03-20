@@ -5,13 +5,12 @@ namespace App\Console\Commands;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ShareController;
+use App\Http\Controllers\FeedController;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
-
-use function Laravel\Prompts\spin;
 
 class WarmApiCache extends Command
 {
@@ -46,6 +45,10 @@ class WarmApiCache extends Command
 
         $this->line('  Shares: index');
         $shareController->index(new Request);
+
+        // Warm RSS feed
+        $this->line('  RSS feed');
+        app(FeedController::class)();
 
         // Warm individual blog posts
         $blogSlugs = Blog::published()->pluck('slug');

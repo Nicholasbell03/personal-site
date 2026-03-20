@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Http\Controllers\FeedController;
 use Illuminate\Support\Facades\Cache;
 
 trait ClearsApiCache
@@ -33,6 +34,8 @@ trait ClearsApiCache
         for ($page = 2; $page <= 10; $page++) {
             Cache::forget("{$cacheKey}.index.{$page}");
         }
+
+        Cache::forget(FeedController::CACHE_KEY);
     }
 
     abstract public static function getApiCacheKey(): string;
