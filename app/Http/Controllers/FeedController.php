@@ -4,18 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Blog;
 use App\Models\Project;
+use App\Support\FeedCache;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
 class FeedController extends Controller
 {
-    public const CACHE_KEY = 'feed.rss';
-
     private const CACHE_TTL = 60 * 60 * 24; // 24 hours
 
     public function __invoke(): Response
     {
-        $xml = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function (): string {
+        $xml = Cache::remember(FeedCache::KEY, self::CACHE_TTL, function (): string {
             $blogs = Blog::published()->latestPublished()->get();
             $projects = Project::published()->latestPublished()->get();
 
@@ -27,6 +26,7 @@ class FeedController extends Controller
                 'publishedAt' => $blog->published_at->getTimestamp(),
                 'category' => 'Blog',
                 'imageUrl' => $blog->getDownstreamImageUrl(),
+                'imageType' => self::mimeTypeFromPath($blog->featured_image),
             ]);
 
             $projectItems = $projects->map(fn (Project $project) => [
@@ -37,6 +37,7 @@ class FeedController extends Controller
                 'publishedAt' => $project->published_at->getTimestamp(),
                 'category' => 'Project',
                 'imageUrl' => $project->getDownstreamImageUrl(),
+                'imageType' => self::mimeTypeFromPath($project->featured_image),
             ]);
 
             $items = $blogItems->toBase()
@@ -54,5 +55,20 @@ class FeedController extends Controller
         return response($xml, 200, [
             'Content-Type' => 'application/rss+xml; charset=UTF-8',
         ]);
+    }
+
+    private static function mimeTypeFromPath(?string $path): ?string
+    {
+        if ($path === null) {
+            return null;
+        }
+
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            default => 'image/jpeg',
+        };
     }
 }

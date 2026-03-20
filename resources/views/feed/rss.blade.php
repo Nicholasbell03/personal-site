@@ -15,7 +15,7 @@
             <guid isPermaLink="true">{{ $item['link'] }}</guid>
             <category>{{ $item['category'] }}</category>
             @if ($item['imageUrl'])
-            <enclosure url="{{ $item['imageUrl'] }}" length="0" type="image/jpeg" />
+            <enclosure url="{{ $item['imageUrl'] }}" length="0" type="{{ $item['imageType'] }}" />
             @endif
         </item>
         @endforeach

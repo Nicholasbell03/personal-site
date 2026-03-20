@@ -2,6 +2,12 @@
 
 use App\Models\Blog;
 use App\Models\Project;
+use App\Support\FeedCache;
+use Illuminate\Support\Facades\Cache;
+
+beforeEach(function () {
+    Cache::forget(FeedCache::KEY);
+});
 
 it('returns valid XML with correct content type', function () {
     $response = $this->get('/feed');
