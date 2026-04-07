@@ -120,4 +120,9 @@ class Share extends Model
     {
         return ['title', 'description', 'commentary'];
     }
+
+    public function isXPost(): bool
+    {
+        return $this->source_type === SourceType::XPost;
+    }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Enums\SourceType;
 use App\Exceptions\XCreditsDepletedException;
+use App\Exceptions\XQuoteNotAllowedException;
 use App\Models\Share;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -18,11 +18,13 @@ class XPostingService
     /**
      * Compose the tweet text for a share.
      *
-     * X posts use quote tweet (summary only), everything else uses summary + URL.
+     * XPost shares in quote-tweet mode use summary only (the quoted post
+     * provides the context). Everything else appends the URL so X can unfurl
+     * a preview card.
      */
-    public function composeTweet(Share $share): string
+    public function composeTweet(Share $share, bool $asQuoteTweet = false): string
     {
-        if ($share->source_type === SourceType::XPost) {
+        if ($asQuoteTweet) {
             return $share->summary ?? '';
         }
 
@@ -36,20 +38,36 @@ class XPostingService
     /**
      * Post a tweet for the given share.
      *
+     * For XPost shares we attempt a true quote tweet first. If X rejects it
+     * with the "not mentioned / not in conversation" restriction, we fall
+     * back to a plain tweet of summary + original tweet URL, which X unfurls
+     * into an embedded card.
+     *
      * @return array{id: string, text: string}
      *
      * @throws \RuntimeException
      */
     public function postTweet(Share $share): array
     {
-        $text = $this->composeTweet($share);
-        $payload = ['text' => $text];
+        $logContext = ['share_id' => $share->id];
 
-        if ($share->source_type === SourceType::XPost && ! empty($share->embed_data['tweet_id'])) {
-            $payload['quote_tweet_id'] = $share->embed_data['tweet_id'];
+        if ($share->isXPost() && ! empty($share->embed_data['tweet_id'])) {
+            try {
+                return $this->sendPayload([
+                    'text' => $this->composeTweet($share, asQuoteTweet: true),
+                    'quote_tweet_id' => $share->embed_data['tweet_id'],
+                ], $logContext);
+            } catch (XQuoteNotAllowedException $e) {
+                Log::info('XPostingService: quote tweet not allowed, falling back to plain tweet with URL', array_merge([
+                    'tweet_id' => $share->embed_data['tweet_id'],
+                ], $logContext));
+            }
         }
 
-        return $this->sendPayload($payload, ['share_id' => $share->id]);
+        return $this->sendPayload(
+            ['text' => $this->composeTweet($share)],
+            $logContext,
+        );
     }
 
     /**
@@ -101,6 +119,10 @@ class XPostingService
         }
 
         if (! $response->successful()) {
+            if ($response->status() === 403 && str_contains((string) $response->json('detail'), 'Quoting this post is not allowed')) {
+                throw new XQuoteNotAllowedException("X API quote restriction: {$response->body()}");
+            }
+
             Log::error('XPostingService: tweet posting failed', array_merge([
                 'status' => $response->status(),
                 'body' => $response->body(),
