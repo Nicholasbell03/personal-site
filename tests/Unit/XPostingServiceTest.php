@@ -34,7 +34,19 @@ it('composes tweet with summary and url for youtube shares', function () {
         ->and($tweet)->toContain($share->url);
 });
 
-it('composes quote tweet with summary only for x post shares', function () {
+it('composes quote tweet with summary only when asQuoteTweet is true', function () {
+    $share = Share::factory()->xPost()->make([
+        'summary' => 'Spot on take about PHP.',
+    ]);
+
+    $service = new XPostingService;
+    $tweet = $service->composeTweet($share, asQuoteTweet: true);
+
+    expect($tweet)->toBe('Spot on take about PHP.')
+        ->and($tweet)->not->toContain($share->url);
+});
+
+it('composes fallback tweet with summary and original tweet url for x post shares', function () {
     $share = Share::factory()->xPost()->make([
         'summary' => 'Spot on take about PHP.',
     ]);
@@ -42,8 +54,78 @@ it('composes quote tweet with summary only for x post shares', function () {
     $service = new XPostingService;
     $tweet = $service->composeTweet($share);
 
-    expect($tweet)->toBe('Spot on take about PHP.')
-        ->and($tweet)->not->toContain($share->url);
+    expect($tweet)->toBe("Spot on take about PHP.\n\n{$share->url}");
+});
+
+it('posts x post share as quote tweet when allowed', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => Http::response([
+            'data' => ['id' => '111', 'text' => 'Spot on take about PHP.'],
+        ], 201),
+    ]);
+
+    $share = Share::factory()->xPost()->make([
+        'summary' => 'Spot on take about PHP.',
+    ]);
+
+    $service = new XPostingService;
+    $result = $service->postTweet($share);
+
+    expect($result['id'])->toBe('111');
+
+    Http::assertSent(function ($request) use ($share) {
+        return $request->data()['text'] === 'Spot on take about PHP.'
+            && $request->data()['quote_tweet_id'] === $share->embed_data['tweet_id'];
+    });
+});
+
+it('falls back to plain tweet when quote tweet is forbidden by x policy', function () {
+    config([
+        'services.x.api_key' => 'test-key',
+        'services.x.api_secret' => 'test-secret',
+        'services.x.access_token' => 'test-token',
+        'services.x.access_token_secret' => 'test-token-secret',
+    ]);
+
+    $responses = [
+        Http::response([
+            'detail' => 'Quoting this post is not allowed because you have not been mentioned or are not part of the conversation thread of the post you are quoting.',
+            'type' => 'about:blank',
+            'title' => 'Forbidden',
+            'status' => 403,
+        ], 403),
+        Http::response([
+            'data' => ['id' => '222', 'text' => 'fallback'],
+        ], 201),
+    ];
+
+    Http::fake([
+        'https://api.x.com/2/tweets' => function () use (&$responses) {
+            return array_shift($responses);
+        },
+    ]);
+
+    $share = Share::factory()->xPost()->make([
+        'summary' => 'Spot on take about PHP.',
+    ]);
+
+    $service = new XPostingService;
+    $result = $service->postTweet($share);
+
+    expect($result['id'])->toBe('222');
+
+    Http::assertSentCount(2);
+    Http::assertSent(function ($request) use ($share) {
+        return $request->data()['text'] === "Spot on take about PHP.\n\n{$share->url}"
+            && ! isset($request->data()['quote_tweet_id']);
+    });
 });
 
 it('truncates summary to respect tweet character limit for non-x-post shares', function () {
