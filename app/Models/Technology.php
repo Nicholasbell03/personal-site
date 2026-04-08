@@ -41,10 +41,10 @@ class Technology extends Model
 
     public const MAX_FEATURED = 12;
 
-    /**
-     * The attribute to generate the slug from.
-     */
-    protected string $slugSource = 'name';
+    public function getSlugSourceColumn(): string
+    {
+        return 'name';
+    }
 
     /**
      * @var list<string>

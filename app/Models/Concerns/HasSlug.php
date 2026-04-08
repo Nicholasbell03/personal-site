@@ -18,7 +18,7 @@ trait HasSlug
 
     public function getSlugSourceColumn(): string
     {
-        return $this->slugSource ?? 'title';
+        return 'title';
     }
 
     protected static function ensureUniqueSlug(string $slug): string

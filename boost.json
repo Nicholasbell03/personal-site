@@ -8,13 +8,13 @@
     "mcp": true,
     "nightwatch_mcp": false,
     "packages": [
-        "filament/filament",
-        "laravel/ai"
+        "filament/filament"
     ],
     "sail": false,
     "skills": [
-        "pest-testing",
         "ai-sdk-development",
+        "laravel-best-practices",
+        "pest-testing",
         "laravel-specialist",
         "php-pro"
     ]
