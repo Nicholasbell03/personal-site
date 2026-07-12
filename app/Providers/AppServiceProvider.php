@@ -30,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
             Limit::perDay(100)->by($request->ip()),
         ]);
 
+        RateLimiter::for('search', fn (Request $request) => [
+            Limit::perMinute(60)->by($request->ip()),
+            Limit::perDay(1000)->by($request->ip()),
+        ]);
+
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
         });
