@@ -175,6 +175,41 @@ it('returns stale cache when GitHub API fails but stale data exists', function (
         ]);
 });
 
+it('retries the live fetch shortly after serving a stale fallback', function () {
+    $staleActivity = new ContributionActivity(
+        dailyContributions: [new ContributionDay(date: '2025-01-01', count: 5)],
+        stats: new ContributionStats(
+            totalLast7Days: 10,
+            totalLast30Days: 42,
+            currentStreak: 7,
+        ),
+    );
+
+    Cache::put('api.v1.github.activity.stale', $staleActivity, 60 * 60 * 24 * 7);
+
+    $days = buildContributionDays(30, fn () => 1);
+
+    Http::fake([
+        'api.github.com/graphql' => Http::sequence()
+            ->push('Internal Server Error', 500)
+            ->push(fakeGitHubGraphQlResponse($days)),
+    ]);
+
+    $this->getJson('/api/v1/github/activity')->assertOk();
+
+    // Within the short retry window the stale fallback is served from cache.
+    $this->getJson('/api/v1/github/activity')->assertOk();
+    Http::assertSentCount(1);
+
+    // Once the retry window passes, GitHub is queried again and fresh data wins.
+    $this->travel(6)->minutes();
+
+    $response = $this->getJson('/api/v1/github/activity');
+
+    $response->assertOk();
+    expect($response->json('data.daily_contributions'))->toHaveCount(30);
+});
+
 it('returns empty structure when credentials are missing', function () {
     config(['services.github.username' => null]);
     config(['services.github.personal_access_token' => null]);
