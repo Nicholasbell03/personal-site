@@ -262,7 +262,8 @@ class SearchService
             return null;
         }
 
-        $cacheKey = 'search.embedding.'.hash('sha256', mb_strtolower($trimmed));
+        $normalized = (string) preg_replace('/\s+/', ' ', mb_strtolower($trimmed));
+        $cacheKey = 'search.embedding.'.hash('sha256', $normalized);
 
         /** @var list<float>|null $cached */
         $cached = Cache::get($cacheKey);
