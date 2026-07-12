@@ -4,6 +4,37 @@ use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
 use App\Models\Technology;
+use Illuminate\Support\Facades\RateLimiter;
+
+beforeEach(function () {
+    config(['cors.allowed_origins' => ['http://localhost:5173']]);
+
+    $this->withHeaders([
+        'Origin' => 'http://localhost:5173',
+        'Sec-Fetch-Site' => 'cross-site',
+        'Sec-Fetch-Mode' => 'cors',
+    ]);
+});
+
+it('rejects requests without browser headers', function () {
+    $this->flushHeaders();
+
+    $this->getJson('/api/v1/search?q=test')
+        ->assertForbidden();
+});
+
+it('has rate limits configured', function () {
+    $request = Illuminate\Http\Request::create('/api/v1/search');
+    $request->server->set('REMOTE_ADDR', '192.168.1.1');
+
+    $limits = RateLimiter::limiter('search')($request);
+
+    expect($limits)->toBeArray()->toHaveCount(2);
+    expect($limits[0]->maxAttempts)->toBe(60);
+    expect($limits[0]->decaySeconds)->toBe(60);
+    expect($limits[1]->maxAttempts)->toBe(1000);
+    expect($limits[1]->decaySeconds)->toBe(86400);
+});
 
 it('returns 422 when query is missing', function () {
     $this->getJson('/api/v1/search')

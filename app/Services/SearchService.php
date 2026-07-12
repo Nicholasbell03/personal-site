@@ -11,6 +11,7 @@ use App\Models\Share;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Embeddings;
@@ -20,6 +21,8 @@ class SearchService
     private const RESULTS_PER_TYPE = 5;
 
     private const MIN_SIMILARITY = 0.3;
+
+    private const EMBEDDING_CACHE_TTL = 60 * 60; // 1 hour
 
     /**
      * Search across content types using semantic vector search.
@@ -259,6 +262,15 @@ class SearchService
             return null;
         }
 
+        $cacheKey = 'search.embedding.'.hash('sha256', mb_strtolower($trimmed));
+
+        /** @var list<float>|null $cached */
+        $cached = Cache::get($cacheKey);
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
         try {
             $request = Embeddings::for([$trimmed]);
 
@@ -273,7 +285,11 @@ class SearchService
                 config('services.embeddings.model'),
             );
 
-            return $response->embeddings[0];
+            $embedding = $response->embeddings[0];
+
+            Cache::put($cacheKey, $embedding, self::EMBEDDING_CACHE_TTL);
+
+            return $embedding;
         } catch (\Throwable $e) {
             Log::error('SearchService: query embedding failed', [
                 'query' => $trimmed,
