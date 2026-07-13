@@ -119,6 +119,7 @@ class ChatController extends Controller
                 } catch (\Throwable $e) {
                     Log::error('ChatController: agent streaming failed mid-stream', [
                         'conversation_id' => $conversationId,
+                        'exception_class' => get_class($e),
                         'exception' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -145,27 +146,22 @@ class ChatController extends Controller
                 'exception' => $e->getMessage(),
             ]);
 
-            return $this->sseError(
-                'The AI service is currently rate limited. Please try again in a moment.',
-                $conversationId,
-                'rate_limited',
-                429,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 429);
         } catch (ConnectionException $e) {
             Log::warning('ChatController: AI provider connection failed', [
                 'conversation_id' => $conversationId,
                 'exception' => $e->getMessage(),
             ]);
 
-            return $this->sseError(
-                'The AI service is temporarily unavailable. Please try again shortly.',
-                $conversationId,
-                'unavailable',
-                503,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 503);
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
                 'conversation_id' => $conversationId,
+                'exception_class' => get_class($e),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -174,17 +170,17 @@ class ChatController extends Controller
                 throw $e;
             }
 
-            return $this->sseError(
-                'Something went wrong. Please try again.',
-                $conversationId,
-                'internal_error',
-                500,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 500);
         }
     }
 
     /**
-     * Map a mid-stream exception to a user-facing SSE error code and message.
+     * Map an AI provider exception to a user-facing SSE error code and message.
+     *
+     * Single source of truth for both pre-stream and mid-stream failures so
+     * error codes and copy cannot drift between the two paths.
      *
      * @return array{0: string, 1: string}
      */
