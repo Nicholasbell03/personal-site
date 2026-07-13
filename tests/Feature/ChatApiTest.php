@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Ai\Exceptions\InsufficientCreditsException;
 
 beforeEach(function () {
     Cache::forget('chat.user_id');
@@ -173,6 +174,43 @@ it('does not cache null user_id', function () {
         ->assertInternalServerError();
 
     expect(Cache::get('chat.user_id'))->toBeNull();
+});
+
+it('emits an SSE error event when the provider runs out of credits mid-stream', function () {
+    PortfolioAgent::fake(function () {
+        throw InsufficientCreditsException::forProvider('openai');
+    });
+
+    $response = $this->post('/api/v1/chat', [
+        'message' => 'Hello there',
+    ], ['Accept' => 'application/json']);
+
+    $response->assertOk();
+
+    $content = $response->streamedContent();
+
+    expect($content)->toContain('"type":"error"')
+        ->and($content)->toContain('"code":"insufficient_credits"')
+        ->and($content)->toContain('out of credits')
+        ->and($content)->toContain('data: [DONE]');
+});
+
+it('emits a generic SSE error event for unexpected mid-stream failures', function () {
+    PortfolioAgent::fake(function () {
+        throw new RuntimeException('boom');
+    });
+
+    $response = $this->post('/api/v1/chat', [
+        'message' => 'Hello there',
+    ], ['Accept' => 'application/json']);
+
+    $response->assertOk();
+
+    $content = $response->streamedContent();
+
+    expect($content)->toContain('"type":"error"')
+        ->and($content)->toContain('"code":"internal_error"')
+        ->and($content)->toContain('data: [DONE]');
 });
 
 it('is rate limited', function () {
