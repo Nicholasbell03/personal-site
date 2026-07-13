@@ -1,10 +1,12 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
-Route::middleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->get('/user', function (Request $request) {
+Route::middleware([EnsureFrontendRequestsAreStateful::class, 'auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
 });
 
@@ -18,7 +20,7 @@ Route::get('/health', function () {
 });
 
 Route::get('/warm-cache', function () {
-    Illuminate\Support\Facades\Artisan::call('api:warm-cache');
+    Artisan::call('api:warm-cache');
 
     return response()->json([
         'status' => 'ok',
@@ -27,8 +29,26 @@ Route::get('/warm-cache', function () {
     ]);
 });
 
+Route::middleware('throttle:6,10')->get('/warm-frontend', function () {
+    $exitCode = Artisan::call('frontend:warm-pages');
+
+    if ($exitCode !== 0) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Frontend page warming failed',
+            'timestamp' => now()->toIso8601String(),
+        ], 503);
+    }
+
+    return response()->json([
+        'status' => 'ok',
+        'message' => trim(Artisan::output()),
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
 Route::get('/check-linkedin-token', function () {
-    $exitCode = Illuminate\Support\Facades\Artisan::call('linkedin:check-token');
+    $exitCode = Artisan::call('linkedin:check-token');
 
     if ($exitCode !== 0) {
         return response()->json([
