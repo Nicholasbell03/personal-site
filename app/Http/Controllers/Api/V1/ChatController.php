@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Ai\Exceptions\InsufficientCreditsException;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\Messages\Message;
 use Symfony\Component\HttpFoundation\Response;
@@ -106,37 +108,60 @@ class ChatController extends Controller
                 }
             });
 
-            $httpResponse = $response->toResponse($request);
-            $httpResponse->headers->set('X-Conversation-Id', $conversationId);
+            // Stream the events manually (mirroring StreamableAgentResponse::toResponse)
+            // so exceptions thrown mid-stream — after headers are sent — surface to the
+            // client as an SSE error event instead of silently truncating the stream.
+            return response()->stream(function () use ($response, $conversationId) {
+                try {
+                    foreach ($response as $event) {
+                        yield 'data: '.((string) $event)."\n\n";
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('ChatController: agent streaming failed mid-stream', [
+                        'conversation_id' => $conversationId,
+                        'exception_class' => get_class($e),
+                        'exception' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
 
-            return $httpResponse;
+                    [$code, $message] = $this->streamErrorDetails($e);
+
+                    yield 'data: '.json_encode([
+                        'type' => 'error',
+                        'code' => $code,
+                        'message' => $message,
+                    ])."\n\n";
+                }
+
+                yield "data: [DONE]\n\n";
+            }, 200, [
+                'Content-Type' => 'text/event-stream',
+                'Cache-Control' => 'no-cache',
+                'X-Accel-Buffering' => 'no',
+                'X-Conversation-Id' => $conversationId,
+            ]);
         } catch (RateLimitedException $e) {
             Log::warning('ChatController: AI provider rate limited', [
                 'conversation_id' => $conversationId,
                 'exception' => $e->getMessage(),
             ]);
 
-            return $this->sseError(
-                'The AI service is currently rate limited. Please try again in a moment.',
-                $conversationId,
-                'rate_limited',
-                429,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 429);
         } catch (ConnectionException $e) {
             Log::warning('ChatController: AI provider connection failed', [
                 'conversation_id' => $conversationId,
                 'exception' => $e->getMessage(),
             ]);
 
-            return $this->sseError(
-                'The AI service is temporarily unavailable. Please try again shortly.',
-                $conversationId,
-                'unavailable',
-                503,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 503);
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
                 'conversation_id' => $conversationId,
+                'exception_class' => get_class($e),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -145,13 +170,40 @@ class ChatController extends Controller
                 throw $e;
             }
 
-            return $this->sseError(
-                'Something went wrong. Please try again.',
-                $conversationId,
-                'internal_error',
-                500,
-            );
+            [$code, $message] = $this->streamErrorDetails($e);
+
+            return $this->sseError($message, $conversationId, $code, 500);
         }
+    }
+
+    /**
+     * Map an AI provider exception to a user-facing SSE error code and message.
+     *
+     * Single source of truth for both pre-stream and mid-stream failures so
+     * error codes and copy cannot drift between the two paths.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function streamErrorDetails(\Throwable $e): array
+    {
+        return match (true) {
+            $e instanceof InsufficientCreditsException => [
+                'insufficient_credits',
+                'The AI assistant is temporarily out of credits. Please check back later — in the meantime, feel free to browse the blog and projects.',
+            ],
+            $e instanceof RateLimitedException, $e instanceof ProviderOverloadedException => [
+                'rate_limited',
+                'The AI service is currently overloaded. Please try again in a moment.',
+            ],
+            $e instanceof ConnectionException => [
+                'unavailable',
+                'The AI service is temporarily unavailable. Please try again shortly.',
+            ],
+            default => [
+                'internal_error',
+                'Something went wrong while generating the response. Please try again.',
+            ],
+        };
     }
 
     /**
