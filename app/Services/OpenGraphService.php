@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SourceType;
 use App\Models\Share;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -29,12 +30,23 @@ class OpenGraphService
     /**
      * Fetch OG metadata from a URL.
      *
-     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, mixed>, og_raw: ?array<string, string>}
      */
     public function fetch(string $url): array
     {
         $sourceType = $this->detectSourceType($url);
         $embedData = $this->extractEmbedData($url, $sourceType);
+
+        // Store the full syndication payload at ingest so the frontend can
+        // render the rich tweet embed without calling X at request time
+        // (X answers slowly/unreliably from data-center IPs).
+        if ($sourceType === SourceType::XPost && isset($embedData['tweet_id'])) {
+            $tweet = $this->fetchTweetSyndication($embedData['tweet_id']);
+
+            if ($tweet !== null) {
+                $embedData['tweet'] = $tweet;
+            }
+        }
 
         if ($sourceType === SourceType::Youtube && isset($embedData['video_id'])) {
             $youtubeData = $this->fetchYoutubeMetadata($embedData['video_id']);
@@ -129,6 +141,90 @@ class OpenGraphService
         };
     }
 
+    /**
+     * Fetch the full tweet payload from X's syndication CDN (the same
+     * endpoint react-tweet uses). Returns null when the tweet is deleted,
+     * private, tombstoned, or the request fails — callers degrade to the
+     * tweet_id-only embed data.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function fetchTweetSyndication(string $tweetId): ?array
+    {
+        if (! preg_match('/^\d{1,40}$/', $tweetId)) {
+            Log::warning('Tweet syndication fetch skipped: invalid tweet id', [
+                'tweet_id' => $tweetId,
+            ]);
+
+            return null;
+        }
+
+        try {
+            /** @var Response $response */
+            $response = Http::timeout(10)
+                ->get('https://cdn.syndication.twimg.com/tweet-result', [
+                    'id' => $tweetId,
+                    'lang' => 'en',
+                    'features' => implode(';', [
+                        'tfw_timeline_list:',
+                        'tfw_follower_count_sunset:true',
+                        'tfw_tweet_edit_backend:on',
+                        'tfw_refsrc_session:on',
+                        'tfw_fosnr_soft_interventions_enabled:on',
+                        'tfw_show_birdwatch_pivots_enabled:on',
+                        'tfw_show_business_verified_badge:on',
+                        'tfw_duplicate_scribes_to_settings:on',
+                        'tfw_use_profile_image_shape_enabled:on',
+                        'tfw_show_blue_verified_badge:on',
+                        'tfw_legacy_timeline_sunset:true',
+                        'tfw_show_gov_verified_badge:on',
+                        'tfw_show_business_affiliate_badge:on',
+                        'tfw_tweet_edit_frontend:on',
+                    ]),
+                    // The endpoint accepts any token value; react-tweet derives
+                    // one from the id but it is not validated server-side.
+                    'token' => base_convert($tweetId, 10, 36),
+                ]);
+
+            if (! $response->successful()) {
+                Log::warning('Tweet syndication fetch failed: non-successful response', [
+                    'tweet_id' => $tweetId,
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload) || $payload === []) {
+                Log::warning('Tweet syndication fetch returned no payload', [
+                    'tweet_id' => $tweetId,
+                ]);
+
+                return null;
+            }
+
+            if (($payload['__typename'] ?? null) === 'TweetTombstone') {
+                Log::warning('Tweet syndication fetch returned a tombstone (deleted/private)', [
+                    'tweet_id' => $tweetId,
+                ]);
+
+                return null;
+            }
+
+            return $payload;
+        } catch (\Throwable $e) {
+            Log::error('Tweet syndication fetch exception', [
+                'tweet_id' => $tweetId,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
     // ── Fetch strategies (private) ──────────────────────────────
 
     /**
@@ -145,7 +241,7 @@ class OpenGraphService
         }
 
         try {
-            /** @var \Illuminate\Http\Client\Response $response */
+            /** @var Response $response */
             $response = Http::timeout(10)
                 ->get('https://www.googleapis.com/youtube/v3/videos', [
                     'part' => 'snippet',
@@ -209,7 +305,7 @@ class OpenGraphService
      * Fetch metadata by scraping OG tags from the URL's HTML.
      *
      * @param  array<string, string>|null  $embedData
-     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, string>, og_raw: ?array<string, string>}
+     * @return array{title: ?string, description: ?string, image: ?string, site_name: ?string, author: ?string, source_type: SourceType, embed_data: ?array<string, mixed>, og_raw: ?array<string, string>}
      */
     private function fetchViaOgScraping(string $url, SourceType $sourceType, ?array $embedData): array
     {
@@ -218,7 +314,7 @@ class OpenGraphService
         }
 
         try {
-            /** @var \Illuminate\Http\Client\Response $response */
+            /** @var Response $response */
             $response = Http::timeout(10)
                 ->maxRedirects(3)
                 ->withHeaders([
@@ -506,8 +602,8 @@ class OpenGraphService
     /**
      * Build a null-result array preserving source type and embed data.
      *
-     * @param  array<string, string>|null  $embedData
-     * @return array{title: null, description: null, image: null, site_name: null, author: null, source_type: SourceType, embed_data: ?array<string, string>, og_raw: null}
+     * @param  array<string, mixed>|null  $embedData
+     * @return array{title: null, description: null, image: null, site_name: null, author: null, source_type: SourceType, embed_data: ?array<string, mixed>, og_raw: null}
      */
     private function emptyResult(SourceType $sourceType, ?array $embedData): array
     {
