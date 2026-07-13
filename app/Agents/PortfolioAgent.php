@@ -14,7 +14,6 @@ use App\Enums\UserContextKey;
 use App\Models\UserContext;
 use Laravel\Ai\Attributes\MaxSteps;
 use Laravel\Ai\Attributes\MaxTokens;
-use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasProviderOptions;
@@ -24,9 +23,10 @@ use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Promptable;
 
+// No Temperature attribute: OpenAI rejects temperature when reasoning.effort
+// is set ("Unsupported parameter"), and reasoning models ignore it anyway.
 #[MaxSteps(7)]
 #[MaxTokens(2048)]
-#[Temperature(0.6)]
 class PortfolioAgent implements Agent, Conversational, HasProviderOptions, HasTools
 {
     use Promptable;

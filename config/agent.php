@@ -19,8 +19,8 @@ return [
 
         'timeout' => (int) env('PORTFOLIO_AGENT_TIMEOUT', 15),
 
-        // Attribute-only (framework limitation) — change in PortfolioAgent class
-        'temperature' => 0.6,
+        // Attribute-only (framework limitation) — change in PortfolioAgent class.
+        // No temperature: OpenAI rejects it alongside reasoning.effort.
         'max_tokens' => 2048,
         'max_steps' => 7,
     ],
