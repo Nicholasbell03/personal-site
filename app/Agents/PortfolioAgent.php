@@ -17,31 +17,63 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Messages\Message;
 use Laravel\Ai\Promptable;
 
 #[MaxSteps(7)]
 #[MaxTokens(2048)]
 #[Temperature(0.6)]
-class PortfolioAgent implements Agent, Conversational, HasTools
+class PortfolioAgent implements Agent, Conversational, HasProviderOptions, HasTools
 {
     use Promptable;
 
     /**
-     * @param  iterable<\Laravel\Ai\Messages\Message>  $conversationMessages
+     * @param  iterable<Message>  $conversationMessages
      */
     public function __construct(
         protected iterable $conversationMessages = [],
     ) {}
 
-    public function provider(): string
+    /**
+     * Ordered provider => model map; the SDK fails over to the next entry
+     * when a provider throws a FailoverableException.
+     *
+     * @return array<string, string>
+     */
+    public function provider(): array
     {
-        return config('agent.portfolio.provider');
+        $providers = [
+            config('agent.portfolio.provider') => config('agent.portfolio.model'),
+        ];
+
+        $fallbackProvider = config('agent.portfolio.fallback_provider');
+
+        if ($fallbackProvider && ! array_key_exists($fallbackProvider, $providers)) {
+            $providers[$fallbackProvider] = config('agent.portfolio.fallback_model');
+        }
+
+        return $providers;
     }
 
-    public function model(): string
+    /**
+     * @return array<string, mixed>
+     */
+    public function providerOptions(Lab|string $provider): array
     {
-        return config('agent.portfolio.model');
+        return match ($provider instanceof Lab ? $provider : Lab::tryFrom($provider)) {
+            Lab::OpenAI => [
+                'reasoning' => ['effort' => config('agent.portfolio.openai_reasoning_effort')],
+            ],
+            // Merged into generationConfig by the Gemini gateway
+            Lab::Gemini => [
+                'thinkingConfig' => ['thinkingLevel' => config('agent.portfolio.gemini_thinking_level')],
+            ],
+            default => [],
+        };
     }
 
     public function timeout(): int
@@ -71,7 +103,7 @@ class PortfolioAgent implements Agent, Conversational, HasTools
     }
 
     /**
-     * @return iterable<\Laravel\Ai\Contracts\Tool>
+     * @return iterable<Tool>
      */
     public function tools(): iterable
     {
@@ -88,7 +120,7 @@ class PortfolioAgent implements Agent, Conversational, HasTools
     }
 
     /**
-     * @return iterable<\Laravel\Ai\Messages\Message>
+     * @return iterable<Message>
      */
     public function messages(): iterable
     {
