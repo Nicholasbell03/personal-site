@@ -29,7 +29,7 @@ Route::get('/warm-cache', function () {
     ]);
 });
 
-Route::get('/warm-frontend', function () {
+Route::middleware('throttle:6,10')->get('/warm-frontend', function () {
     $exitCode = Artisan::call('frontend:warm-pages');
 
     if ($exitCode !== 0) {

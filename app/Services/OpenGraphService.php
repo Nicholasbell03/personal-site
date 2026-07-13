@@ -13,6 +13,28 @@ class OpenGraphService
     /** @var list<string> */
     private const X_RESERVED_PATHS = ['i'];
 
+    /**
+     * Feature flags X's syndication endpoint expects (mirrors react-tweet).
+     *
+     * @var list<string>
+     */
+    private const SYNDICATION_FEATURES = [
+        'tfw_timeline_list:',
+        'tfw_follower_count_sunset:true',
+        'tfw_tweet_edit_backend:on',
+        'tfw_refsrc_session:on',
+        'tfw_fosnr_soft_interventions_enabled:on',
+        'tfw_show_birdwatch_pivots_enabled:on',
+        'tfw_show_business_verified_badge:on',
+        'tfw_duplicate_scribes_to_settings:on',
+        'tfw_use_profile_image_shape_enabled:on',
+        'tfw_show_blue_verified_badge:on',
+        'tfw_legacy_timeline_sunset:true',
+        'tfw_show_gov_verified_badge:on',
+        'tfw_show_business_affiliate_badge:on',
+        'tfw_tweet_edit_frontend:on',
+    ];
+
     /** @var list<string> */
     public const METADATA_FIELDS = [
         'title',
@@ -165,22 +187,7 @@ class OpenGraphService
                 ->get('https://cdn.syndication.twimg.com/tweet-result', [
                     'id' => $tweetId,
                     'lang' => 'en',
-                    'features' => implode(';', [
-                        'tfw_timeline_list:',
-                        'tfw_follower_count_sunset:true',
-                        'tfw_tweet_edit_backend:on',
-                        'tfw_refsrc_session:on',
-                        'tfw_fosnr_soft_interventions_enabled:on',
-                        'tfw_show_birdwatch_pivots_enabled:on',
-                        'tfw_show_business_verified_badge:on',
-                        'tfw_duplicate_scribes_to_settings:on',
-                        'tfw_use_profile_image_shape_enabled:on',
-                        'tfw_show_blue_verified_badge:on',
-                        'tfw_legacy_timeline_sunset:true',
-                        'tfw_show_gov_verified_badge:on',
-                        'tfw_show_business_affiliate_badge:on',
-                        'tfw_tweet_edit_frontend:on',
-                    ]),
+                    'features' => implode(';', self::SYNDICATION_FEATURES),
                     // The endpoint accepts any token value; react-tweet derives
                     // one from the id but it is not validated server-side.
                     'token' => base_convert($tweetId, 10, 36),

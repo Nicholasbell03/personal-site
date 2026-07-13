@@ -17,7 +17,16 @@ class WarmFrontendPages extends Command
 
     public function handle(): int
     {
-        $base = rtrim(config('app.frontend_url'), '/');
+        $base = rtrim((string) config('app.frontend_url'), '/');
+
+        if ($base === '' || ! str_starts_with($base, 'http')) {
+            Log::error('WarmFrontendPages: app.frontend_url is not configured', [
+                'value' => $base,
+            ]);
+            $this->error('app.frontend_url (FRONTEND_URL) is not configured.');
+
+            return Command::FAILURE;
+        }
 
         try {
             $sitemap = Http::timeout(20)->get("{$base}/sitemap.xml");
