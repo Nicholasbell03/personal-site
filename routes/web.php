@@ -10,18 +10,6 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
 });
 
-Route::get('/phpinfo', function () {
-    return phpinfo();
-});
-
-Route::get('/test', function () {
-    return response()->json([
-        'message' => 'Basic route working',
-        'php_version' => PHP_VERSION,
-        'laravel_version' => app()->version(),
-    ]);
-});
-
 Route::get('/feed', \App\Http\Controllers\FeedController::class)->name('feed.rss');
 
 require __DIR__.'/auth.php';
