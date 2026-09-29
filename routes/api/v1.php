@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\GitHubController;
+use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\ShareController;
@@ -48,6 +49,8 @@ Route::prefix('shares')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/blogs', [BlogController::class, 'store'])->name('v1.blogs.store');
+    Route::patch('/blogs/{blog}', [BlogController::class, 'update'])->whereNumber('blog')->name('v1.blogs.update');
+    Route::post('/media', [MediaController::class, 'store'])->name('v1.media.store');
     Route::post('/projects', [ProjectController::class, 'store'])->name('v1.projects.store');
     Route::post('/shares', [ShareController::class, 'store'])->name('v1.shares.store');
 });

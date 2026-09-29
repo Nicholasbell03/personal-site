@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\PublishStatus;
+use App\Actions\CreateBlogDraft;
+use App\Actions\UpdateBlogDraft;
 use App\Filament\Resources\Blogs\BlogResource as FilamentBlogResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreBlogRequest;
+use App\Http\Requests\Api\V1\UpdateBlogRequest;
 use App\Http\Resources\BlogResource;
 use App\Http\Resources\BlogSummaryResource;
 use App\Http\Resources\RelatedItemResource;
@@ -93,17 +95,18 @@ class BlogController extends Controller
         return response()->json($data);
     }
 
-    public function store(StoreBlogRequest $request): JsonResponse
+    public function store(StoreBlogRequest $request, CreateBlogDraft $createBlogDraft): JsonResponse
     {
-        $blog = Blog::create([
-            ...$request->validated(),
-            'status' => PublishStatus::Draft,
-        ]);
+        $blog = $createBlogDraft->execute($request->validated());
 
-        return response()->json([
-            'data' => (new BlogResource($blog))->resolve(),
-            'admin_url' => FilamentBlogResource::getUrl('edit', ['record' => $blog]),
-        ], 201);
+        return $this->draftResponse($blog, 201);
+    }
+
+    public function update(UpdateBlogRequest $request, Blog $blog, UpdateBlogDraft $updateBlogDraft): JsonResponse
+    {
+        $blog = $updateBlogDraft->execute($blog, $request->validated());
+
+        return $this->draftResponse($blog, 200);
     }
 
     public function preview(string $slug): BlogResource
@@ -113,5 +116,13 @@ class BlogController extends Controller
             ->firstOrFail();
 
         return new BlogResource($blog);
+    }
+
+    private function draftResponse(Blog $blog, int $status): JsonResponse
+    {
+        return response()->json([
+            'data' => (new BlogResource($blog))->resolve(),
+            'admin_url' => FilamentBlogResource::getUrl('edit', ['record' => $blog]),
+        ], $status);
     }
 }

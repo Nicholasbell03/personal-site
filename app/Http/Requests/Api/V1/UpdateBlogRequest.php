@@ -5,8 +5,9 @@ namespace App\Http\Requests\Api\V1;
 use App\Rules\StoredBlogImage;
 use App\Support\BlogImages;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
-class StoreBlogRequest extends FormRequest
+class UpdateBlogRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,12 +20,12 @@ class StoreBlogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:blogs,slug'],
-            'excerpt' => ['nullable', 'string', 'max:230'],
-            'meta_description' => ['nullable', 'string', 'max:255'],
-            'featured_image' => ['nullable', 'string', new StoredBlogImage],
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'content' => ['sometimes', 'required', 'string'],
+            'slug' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('blogs', 'slug')->ignore($this->route('blog'))],
+            'excerpt' => ['sometimes', 'nullable', 'string', 'max:230'],
+            'meta_description' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'featured_image' => ['sometimes', 'nullable', 'string', new StoredBlogImage],
         ];
     }
 
