@@ -22,12 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust Render.com's proxy so Laravel detects HTTPS correctly
         $middleware->trustProxies(at: '*');
 
-        // Send browsers to the Filament login for the API docs. API routes keep returning 401.
+        // There is no public login page (Filament has its own), so guests get a 401 instead of a redirect.
+        // The one exception: browsers opening the API docs are sent to the Filament login.
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('docs/*') ? route('filament.admin.auth.login') : null);
 
         $middleware->alias([
             'browser' => \App\Http\Middleware\ValidateBrowserRequest::class,
-            'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
