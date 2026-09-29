@@ -9,90 +9,33 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreBlogRequest;
 use App\Http\Requests\Api\V1\UpdateBlogRequest;
 use App\Http\Resources\BlogResource;
-use App\Http\Resources\BlogSummaryResource;
-use App\Http\Resources\RelatedItemResource;
 use App\Models\Blog;
-use App\Services\RelatedContentService;
+use App\Services\BlogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class BlogController extends Controller
 {
-    private const CACHE_TTL = 60 * 60 * 24; // 24 hours
+    public function __construct(private BlogService $blogs) {}
 
     public function index(Request $request): JsonResponse
     {
-        $page = $request->integer('page', 1);
-        $cacheKey = Blog::getApiCacheKey().".index.{$page}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            $blogs = Blog::query()
-                ->published()
-                ->latestPublished()
-                ->paginate(10);
-
-            return BlogSummaryResource::collection($blogs)->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->blogs->paginated($request->integer('page', 1)));
     }
 
     public function featured(): JsonResponse
     {
-        $cacheKey = Blog::getApiCacheKey().'.featured';
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            $blogs = Blog::query()
-                ->published()
-                ->latestPublished()
-                ->limit(3)
-                ->get();
-
-            return BlogSummaryResource::collection($blogs)->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->blogs->featured());
     }
 
     public function show(string $slug): JsonResponse
     {
-        $cacheKey = Blog::getApiCacheKey().".show.{$slug}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug) {
-            $blog = Blog::query()
-                ->published()
-                ->where('slug', $slug)
-                ->firstOrFail();
-
-            return (new BlogResource($blog))->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->blogs->show($slug));
     }
 
-    public function related(string $slug, RelatedContentService $service): JsonResponse
+    public function related(string $slug): JsonResponse
     {
-        $cacheKey = Blog::getApiCacheKey().".related.{$slug}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug, $service) {
-            $blog = Blog::query()
-                ->published()
-                ->where('slug', $slug)
-                ->firstOrFail();
-
-            $next = $service->getNextItem($blog);
-            $related = $service->getRelatedItems($blog);
-
-            return [
-                'data' => [
-                    'next' => $next ? (new RelatedItemResource($next))->resolve() : null,
-                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item']))->resolve())->values()->all(),
-                ],
-            ];
-        });
-
-        return response()->json($data);
+        return response()->json($this->blogs->related($slug));
     }
 
     /**
@@ -123,11 +66,7 @@ class BlogController extends Controller
 
     public function preview(string $slug): BlogResource
     {
-        $blog = Blog::query()
-            ->where('slug', $slug)
-            ->firstOrFail();
-
-        return new BlogResource($blog);
+        return new BlogResource($this->blogs->findForPreview($slug));
     }
 
     private function draftResponse(Blog $blog, int $status): JsonResponse

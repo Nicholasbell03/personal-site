@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\RelatedItemResource;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
@@ -15,6 +16,27 @@ class RelatedContentService
     private const MIN_SIMILARITY = 0.3;
 
     private const RESULTS_PER_TYPE = 3;
+
+    /**
+     * The `{data: {next, related}}` payload returned by the related-content endpoints.
+     *
+     * @param  Blog|Project|Share  $item
+     * @return array{data: array{next: array<string, mixed>|null, related: list<array<string, mixed>>}}
+     */
+    public function payloadFor(Model $item): array
+    {
+        $next = $this->getNextItem($item);
+
+        return [
+            'data' => [
+                'next' => $next ? (new RelatedItemResource($next))->resolve() : null,
+                'related' => $this->getRelatedItems($item)
+                    ->map(fn (array $related) => (new RelatedItemResource($related['item']))->resolve())
+                    ->values()
+                    ->all(),
+            ],
+        ];
+    }
 
     /**
      * Get the next chronologically published item of the same type.

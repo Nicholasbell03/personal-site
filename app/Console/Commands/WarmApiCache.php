@@ -2,15 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\Api\V1\BlogController;
-use App\Http\Controllers\Api\V1\ProjectController;
-use App\Http\Controllers\Api\V1\ShareController;
-use App\Http\Controllers\FeedController;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
+use App\Services\BlogService;
+use App\Services\FeedService;
+use App\Services\ProjectService;
+use App\Services\ShareService;
 use Illuminate\Console\Command;
-use Illuminate\Http\Request;
 
 class WarmApiCache extends Command
 {
@@ -18,57 +17,53 @@ class WarmApiCache extends Command
 
     protected $description = 'Pre-warm the API response cache for all public endpoints';
 
-    public function handle(): int
+    public function handle(BlogService $blogs, ProjectService $projects, ShareService $shares, FeedService $feed): int
     {
         $this->info('Warming API cache...');
 
-        $blogController = app(BlogController::class);
-        $projectController = app(ProjectController::class);
-        $shareController = app(ShareController::class);
-
         // Warm featured endpoints
         $this->line('  Blogs: featured');
-        $blogController->featured();
+        $blogs->featured();
 
         $this->line('  Projects: featured');
-        $projectController->featured();
+        $projects->featured();
 
         $this->line('  Shares: featured');
-        $shareController->featured();
+        $shares->featured();
 
         // Warm index endpoints (first page)
         $this->line('  Blogs: index');
-        $blogController->index(new Request);
+        $blogs->paginated(1);
 
         $this->line('  Projects: index');
-        $projectController->index(new Request);
+        $projects->paginated(1);
 
         $this->line('  Shares: index');
-        $shareController->index(new Request);
+        $shares->paginated(1);
 
         // Warm RSS feed
         $this->line('  RSS feed');
-        app(FeedController::class)();
+        $feed->rss();
 
         // Warm individual blog posts
         $blogSlugs = Blog::published()->pluck('slug');
         foreach ($blogSlugs as $slug) {
             $this->line("  Blog: {$slug}");
-            $blogController->show($slug);
+            $blogs->show($slug);
         }
 
         // Warm individual projects
         $projectSlugs = Project::published()->pluck('slug');
         foreach ($projectSlugs as $slug) {
             $this->line("  Project: {$slug}");
-            $projectController->show($slug);
+            $projects->show($slug);
         }
 
         // Warm individual shares
         $shareSlugs = Share::query()->pluck('slug');
         foreach ($shareSlugs as $slug) {
             $this->line("  Share: {$slug}");
-            $shareController->show($slug);
+            $shares->show($slug);
         }
 
         $this->info('Cache warmed successfully.');
