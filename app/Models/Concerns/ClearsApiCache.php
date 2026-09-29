@@ -22,7 +22,7 @@ trait ClearsApiCache
     {
         $cacheKey = static::getApiCacheKey();
 
-        // Clear the index list (every page is sliced from it) and featured caches
+        // Clear list/featured caches
         Cache::forget("{$cacheKey}.index");
         Cache::forget("{$cacheKey}.featured");
 

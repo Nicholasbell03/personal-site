@@ -5,18 +5,13 @@ use App\Models\Project;
 use App\Models\Share;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Index lists are cached for 24 hours and shared by every visitor. Pagination links are built per
- * request, so the Host or X-Forwarded-Host of whichever request filled the cache never reaches others.
- */
 it('ignores a forged host when caching pagination links', function (string $type, Closure $seed) {
     $seed();
     Cache::flush();
 
     $this->getJson("/api/v1/{$type}", ['X-Forwarded-Host' => 'evil.example'])->assertOk();
 
-    // The test client builds a relative URL from the previous request's host, so address the
-    // honest visitor's request explicitly, as a real client would.
+    // The test client reuses the previous request's host, so address the honest request explicitly.
     $base = rtrim(config('app.url'), '/');
     $links = $this->getJson("{$base}/api/v1/{$type}")->assertOk()->json('links');
 

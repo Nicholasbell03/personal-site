@@ -8,6 +8,8 @@ use Illuminate\Pagination\Paginator;
 
 class PaginatedPayload
 {
+    private const PER_PAGE = 10;
+
     /**
      * Cut one page out of a cached list and return the `{data, links, meta}` payload a paginated
      * API Resource collection returns. Only the list is cached; links are built from the current
@@ -16,14 +18,14 @@ class PaginatedPayload
      * @param  list<array<string, mixed>>  $items  Resource arrays, already transformed.
      * @return array<string, mixed>
      */
-    public static function make(array $items, int $page, int $perPage = 10): array
+    public static function make(array $items, int $page): array
     {
         $page = max(1, $page);
 
         $paginator = new LengthAwarePaginator(
-            array_slice($items, ($page - 1) * $perPage, $perPage),
+            array_slice($items, ($page - 1) * self::PER_PAGE, self::PER_PAGE),
             count($items),
-            $perPage,
+            self::PER_PAGE,
             $page,
             ['path' => Paginator::resolveCurrentPath()],
         );
