@@ -21,13 +21,14 @@ beforeEach(function () {
 });
 
 /**
- * A unit vector whose cosine similarity to [1, 0, 0, ...] is exactly $similarity.
+ * A unit vector whose cosine similarity to [1, 0, 0, ...] is exactly $similarity. It has 1536 dimensions
+ * because that is fixed by the `embedding` vector column, whatever EMBEDDING_DIMENSIONS is set to.
  *
  * @return list<float>
  */
 function embeddingWithSimilarity(float $similarity): array
 {
-    $vector = array_fill(0, (int) config('services.embeddings.dimensions'), 0.0);
+    $vector = array_fill(0, 1536, 0.0);
     $vector[0] = $similarity;
     $vector[1] = sqrt(1 - $similarity ** 2);
 
