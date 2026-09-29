@@ -18,6 +18,9 @@ class ShareService
     public function __construct(private RelatedContentService $relatedContent) {}
 
     /**
+     * Pagination links point at the index endpoint explicitly, because the cache is also warmed from
+     * `api:warm-cache`, where the current request is the CLI or `GET /api/warm-cache`.
+     *
      * @return array<string, mixed>
      */
     public function paginated(int $page): array
@@ -25,7 +28,8 @@ class ShareService
         return Cache::remember(Share::getApiCacheKey().".index.{$page}", self::CACHE_TTL, function () use ($page) {
             $shares = Share::query()
                 ->latest()
-                ->paginate(10, page: $page);
+                ->paginate(10, page: $page)
+                ->withPath(route('v1.shares.index'));
 
             return ShareSummaryResource::collection($shares)->response()->getData(true);
         });
