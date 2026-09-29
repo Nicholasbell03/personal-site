@@ -31,7 +31,7 @@ class WarmApiCache extends Command
         $this->line('  Shares: featured');
         $shares->featured();
 
-        // Warm index endpoints (first page)
+        // Warm index lists (every page is sliced from these)
         $this->line('  Blogs: index');
         $blogs->paginated(1);
 

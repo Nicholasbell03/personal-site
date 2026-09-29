@@ -14,10 +14,12 @@ it('warms the same payloads the public endpoints serve', function () {
 
     $this->artisan('api:warm-cache')->assertSuccessful();
 
+    $warmedIndexes = [
+        '/api/v1/blogs' => Cache::get('api.v1.blogs.index'),
+        '/api/v1/projects' => Cache::get('api.v1.projects.index'),
+        '/api/v1/shares' => Cache::get('api.v1.shares.index'),
+    ];
     $warmed = [
-        '/api/v1/blogs' => Cache::get('api.v1.blogs.index.1'),
-        '/api/v1/projects' => Cache::get('api.v1.projects.index.1'),
-        '/api/v1/shares' => Cache::get('api.v1.shares.index.1'),
         '/api/v1/blogs/featured' => Cache::get('api.v1.blogs.featured'),
         '/api/v1/projects/featured' => Cache::get('api.v1.projects.featured'),
         '/api/v1/shares/featured' => Cache::get('api.v1.shares.featured'),
@@ -29,6 +31,12 @@ it('warms the same payloads the public endpoints serve', function () {
 
     Cache::flush();
 
+    // Index caches hold the whole list; each page is sliced from it.
+    foreach ($warmedIndexes as $uri => $list) {
+        expect($list)->not->toBeNull()
+            ->and($this->getJson($uri)->assertOk()->json('data'))->toEqual($list);
+    }
+
     foreach ($warmed as $uri => $payload) {
         expect($payload)->not->toBeNull()
             ->and($this->getJson($uri)->assertOk()->json())->toEqual($payload);
@@ -38,7 +46,7 @@ it('warms the same payloads the public endpoints serve', function () {
         ->and($this->get('/feed')->assertOk()->getContent())->toBe($warmedFeed);
 });
 
-it('builds pagination links for the endpoint, not the request that triggered warming', function () {
+it('serves pagination links for the endpoint after warming over http', function () {
     Blog::factory()->count(11)->published()->create();
     Project::factory()->count(11)->published()->create();
     Share::factory()->count(11)->create();
@@ -48,9 +56,10 @@ it('builds pagination links for the endpoint, not the request that triggered war
     $this->getJson('/api/warm-cache')->assertOk();
 
     foreach (['blogs', 'projects', 'shares'] as $type) {
-        $warmed = Cache::get("api.v1.{$type}.index.1");
+        $page = $this->getJson("/api/v1/{$type}")->assertOk();
 
-        expect($warmed['meta']['path'])->toBe(url("/api/v1/{$type}"))
-            ->and($warmed['links']['next'])->toBe(url("/api/v1/{$type}?page=2"));
+        expect($page->json('meta.path'))->toBe(url("/api/v1/{$type}"))
+            ->and($page->json('links.next'))->toBe(url("/api/v1/{$type}?page=2"))
+            ->and(json_encode(Cache::get("api.v1.{$type}.index")))->not->toContain('warm-cache');
     }
 });

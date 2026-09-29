@@ -22,18 +22,13 @@ trait ClearsApiCache
     {
         $cacheKey = static::getApiCacheKey();
 
-        // Clear list/featured caches
-        Cache::forget("{$cacheKey}.index.1");
+        // Clear the index list (every page is sliced from it) and featured caches
+        Cache::forget("{$cacheKey}.index");
         Cache::forget("{$cacheKey}.featured");
 
         // Clear individual item cache
         Cache::forget("{$cacheKey}.show.{$this->slug}");
         Cache::forget("{$cacheKey}.related.{$this->slug}");
-
-        // Clear additional pages (first 10 pages should cover most cases)
-        for ($page = 2; $page <= 10; $page++) {
-            Cache::forget("{$cacheKey}.index.{$page}");
-        }
 
         Cache::forget(FeedCache::KEY);
     }

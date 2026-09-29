@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Resources\ProjectResource;
 use App\Http\Resources\ProjectSummaryResource;
 use App\Models\Project;
+use App\Support\PaginatedPayload;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -18,24 +19,24 @@ class ProjectService
     public function __construct(private RelatedContentService $relatedContent) {}
 
     /**
-     * Pagination links are built from APP_URL and the index route, never the current request. The
-     * cache is warmed from `api:warm-cache` (the CLI or `GET /api/warm-cache`), and a forged Host or
-     * X-Forwarded-Host on a cold cache would otherwise be served to every visitor for 24 hours.
+     * One page of the index. The whole list is cached under one key and sliced per request,
+     * so a save only has to forget one entry and every page stays in step.
      *
      * @return array<string, mixed>
      */
     public function paginated(int $page): array
     {
-        return Cache::remember(Project::getApiCacheKey().".index.{$page}", self::CACHE_TTL, function () use ($page) {
+        $all = Cache::remember(Project::getApiCacheKey().'.index', self::CACHE_TTL, function () {
             $projects = Project::query()
                 ->published()
                 ->with('technologies')
                 ->latestPublished()
-                ->paginate(10, page: $page)
-                ->withPath(rtrim(config('app.url'), '/').route('v1.projects.index', absolute: false));
+                ->get();
 
-            return ProjectSummaryResource::collection($projects)->response()->getData(true);
+            return ProjectSummaryResource::collection($projects)->response()->getData(true)['data'];
         });
+
+        return PaginatedPayload::make($all, $page);
     }
 
     /**
