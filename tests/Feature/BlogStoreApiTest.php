@@ -3,6 +3,7 @@
 use App\Enums\PublishStatus;
 use App\Models\Blog;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
 it('creates a draft blog with valid sanctum token', function () {
     $user = User::factory()->create();
@@ -186,4 +187,70 @@ it('calculates read time from content', function () {
 
     $response->assertCreated()
         ->assertJsonPath('data.read_time', 2);
+});
+
+it('sets the featured image from a path returned by the media endpoint', function () {
+    config(['filesystems.default' => 'r2', 'filament.default_filesystem_disk' => 'r2']);
+    Storage::fake('r2', ['url' => 'https://assets.nickbell.dev']);
+    Storage::disk('r2')->put('blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png', 'image');
+
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/blogs', [
+            'title' => 'Blog With Image',
+            'content' => 'Content.',
+            'featured_image' => 'blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+        ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.featured_image', 'https://assets.nickbell.dev/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png');
+
+    $this->assertDatabaseHas('blogs', [
+        'title' => 'Blog With Image',
+        'featured_image' => 'blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+    ]);
+});
+
+it('stores a featured image url as its path', function () {
+    config(['filesystems.default' => 'r2', 'filament.default_filesystem_disk' => 'r2']);
+    Storage::fake('r2', ['url' => 'https://assets.nickbell.dev']);
+    Storage::disk('r2')->put('blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png', 'image');
+
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/blogs', [
+            'title' => 'Blog With Image URL',
+            'content' => 'Content.',
+            'featured_image' => 'https://assets.nickbell.dev/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+        ])
+        ->assertCreated();
+
+    $this->assertDatabaseHas('blogs', [
+        'title' => 'Blog With Image URL',
+        'featured_image' => 'blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+    ]);
+});
+
+it('rejects a featured image that was not uploaded', function () {
+    config(['filesystems.default' => 'r2', 'filament.default_filesystem_disk' => 'r2']);
+    Storage::fake('r2', ['url' => 'https://assets.nickbell.dev']);
+
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withHeader('Authorization', "Bearer {$token}")
+        ->postJson('/api/v1/blogs', [
+            'title' => 'Blog With Missing Image',
+            'content' => 'Content.',
+            'featured_image' => 'blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['featured_image']);
+
+    $this->assertDatabaseMissing('blogs', ['title' => 'Blog With Missing Image']);
 });
