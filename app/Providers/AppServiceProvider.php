@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,10 +33,6 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(60)->by($request->ip()),
             Limit::perDay(1000)->by($request->ip()),
         ]);
-
-        ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
-            return config('app.frontend_url')."/password-reset/$token?email={$notifiable->getEmailForPasswordReset()}";
-        });
 
         LogViewer::auth(function ($request) {
             return $request->user()?->email === config('log-viewer.admin_email');
