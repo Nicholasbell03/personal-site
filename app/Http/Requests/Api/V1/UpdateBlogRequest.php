@@ -8,7 +8,6 @@ use App\Models\Blog;
 use App\Rules\StoredBlogImage;
 use App\Support\BlogImages;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class UpdateBlogRequest extends FormRequest
@@ -34,12 +33,6 @@ class UpdateBlogRequest extends FormRequest
         ];
     }
 
-    private function blog(): Blog
-    {
-        /** @var Blog */
-        return $this->route('blog');
-    }
-
     /**
      * Refuse published blogs before validating, so they always get a 409 rather than a 422.
      * UpdateBlogDraft repeats the check under a row lock, in case the blog is published mid-request.
@@ -48,13 +41,11 @@ class UpdateBlogRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if ($this->blog()->status !== PublishStatus::Draft) {
-            Log::warning('Refused API update of a non-draft blog', [
-                'blog_id' => $this->blog()->id,
-                'status' => $this->blog()->status->value,
-            ]);
+        /** @var Blog $blog */
+        $blog = $this->route('blog');
 
-            throw new BlogNotDraftException;
+        if ($blog->status !== PublishStatus::Draft) {
+            throw BlogNotDraftException::for($blog);
         }
 
         if (is_string($this->input('featured_image'))) {

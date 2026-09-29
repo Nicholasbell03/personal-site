@@ -14,13 +14,33 @@ class RecordChatExchange
      */
     public function execute(string $conversationId, int $userId, string $userMessage, StreamedAgentResponse $reply): void
     {
-        DB::table('agent_conversation_messages')->insert([
+        DB::table('agent_conversation_messages')->insert(
+            $this->row($conversationId, $userId, 'user', $userMessage)
+        );
+
+        DB::table('agent_conversation_messages')->insert(
+            $this->row($conversationId, $userId, 'assistant', $reply->text, [
+                'tool_calls' => json_encode($reply->toolCalls),
+                'tool_results' => json_encode($reply->toolResults),
+                'usage' => json_encode($reply->usage),
+                'meta' => json_encode($reply->meta),
+            ])
+        );
+    }
+
+    /**
+     * @param  array<string, string|false>  $json  JSON-encoded columns that differ from the empty default.
+     * @return array<string, mixed>
+     */
+    private function row(string $conversationId, int $userId, string $role, string $content, array $json = []): array
+    {
+        return [
             'id' => Str::uuid7()->toString(),
             'conversation_id' => $conversationId,
             'user_id' => $userId,
             'agent' => PortfolioAgent::class,
-            'role' => 'user',
-            'content' => $userMessage,
+            'role' => $role,
+            'content' => $content,
             'attachments' => '[]',
             'tool_calls' => '[]',
             'tool_results' => '[]',
@@ -28,22 +48,7 @@ class RecordChatExchange
             'meta' => '[]',
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
-
-        DB::table('agent_conversation_messages')->insert([
-            'id' => Str::uuid7()->toString(),
-            'conversation_id' => $conversationId,
-            'user_id' => $userId,
-            'agent' => PortfolioAgent::class,
-            'role' => 'assistant',
-            'content' => $reply->text,
-            'attachments' => '[]',
-            'tool_calls' => json_encode($reply->toolCalls),
-            'tool_results' => json_encode($reply->toolResults),
-            'usage' => json_encode($reply->usage),
-            'meta' => json_encode($reply->meta),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            ...$json,
+        ];
     }
 }

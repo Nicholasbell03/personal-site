@@ -62,7 +62,7 @@ class GitHubService
     /**
      * Fetch GitHub contribution activity for the configured user.
      */
-    public function fetchContributionActivity(): ?ContributionActivity
+    private function fetchContributionActivity(): ?ContributionActivity
     {
         $username = config('services.github.username');
         $token = config('services.github.personal_access_token');
