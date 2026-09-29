@@ -63,126 +63,56 @@ docker exec laravel_app vendor/bin/phpstan analyse
 docker exec laravel_app vendor/bin/pint
 ```
 
-## Agent API
+## API
 
-Agents can draft blog posts with images without anyone touching the admin panel. Every endpoint below needs a Sanctum token (create one on the **API Tokens** page in the admin panel, or with `php artisan app:generate-api-token`), sent as `Authorization: Bearer $TOKEN`.
+The full API reference is generated from the code by [Scramble](https://scramble.dedoc.co):
 
-These endpoints cannot publish anything. New posts are always drafts, only drafts can be edited, and publishing is done by a person in Filament.
+- **Docs UI:** `/docs/api` (sends you to the admin login if you are not signed in)
+- **OpenAPI spec:** `/docs/api.json` (send `Authorization: Bearer $TOKEN`)
 
-A typical flow: upload each image, put the returned `url` in the post HTML, create the draft with one image as `featured_image`, then `PATCH` it to revise.
+Both are private. They need a Filament login session or a Sanctum token.
 
-### POST /api/v1/media
+### Agent workflow
 
-**Route name:** `v1.media.store`
-**Middleware:** `api`, `auth:sanctum`
+Agents can draft blog posts with images without anyone touching the admin panel. Create a token on the **API Tokens** page in the admin panel, or with `php artisan app:generate-api-token`.
 
-Uploads an image to the `blog-images/` directory on the same disk as the Filament featured image upload (R2 in production). The file gets a ULID filename and public visibility.
+These endpoints cannot publish anything. New posts are always drafts, only drafts can be edited (published posts return `409`), and publishing is done by a person in Filament.
 
-| Parameter | Type | Rules |
-|-----------|------|-------|
-| file | file (multipart/form-data) | required; png, jpg/jpeg, webp, avif or gif (checked from the file contents, so SVG is rejected); max 10 MB |
+1. **Upload each image.** png, jpg/jpeg, webp, avif or gif, up to 10 MB. SVG is rejected.
 
-```bash
-curl -F file=@screenshot.png \
-  -H "Accept: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  https://api.nickbell.dev/api/v1/media
-```
+   ```bash
+   curl -F file=@screenshot.png \
+     -H "Accept: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
+     https://api.nickbell.dev/api/v1/media
+   # {"data": {"path": "blog-images/01K....png", "url": "https://assets.nickbell.dev/blog-images/01K....png"}}
+   ```
 
-**Response `201`**
+2. **Create the draft.** Embed each image's `url` in the HTML, and pass one `path` or `url` as `featured_image`.
 
-```json
-{
-  "data": {
-    "path": "blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png",
-    "url": "https://assets.nickbell.dev/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png"
-  }
-}
-```
+   ```bash
+   curl -X POST https://api.nickbell.dev/api/v1/blogs \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
+     -d '{
+       "title": "Shipping an agent API",
+       "content": "<p>Intro</p><img src=\"https://assets.nickbell.dev/blog-images/01K....png\" alt=\"Screenshot\">",
+       "featured_image": "blog-images/01K....png"
+     }'
+   ```
 
-Embed `url` in post content (`<img src="...">`). Pass `path` or `url` as `featured_image`.
+3. **Revise it.** Send only the fields to change. `"featured_image": null` removes the image.
 
-### POST /api/v1/blogs
+   ```bash
+   curl -X PATCH https://api.nickbell.dev/api/v1/blogs/42 \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer $TOKEN" \
+     -d '{"title": "Shipping a small agent API"}'
+   ```
 
-**Route name:** `v1.blogs.store`
-**Middleware:** `api`, `auth:sanctum`
-
-Creates a draft. Any `status` field is ignored.
-
-| Parameter | Type | Rules |
-|-----------|------|-------|
-| title | string | required, max 255 |
-| content | string (HTML) | required |
-| slug | string | optional, max 255, unique; generated from the title if omitted |
-| excerpt | string | optional, max 230 |
-| meta_description | string | optional, max 255 |
-| featured_image | string | optional; a `path` or `url` returned by `POST /api/v1/media` |
-
-```bash
-curl -X POST https://api.nickbell.dev/api/v1/blogs \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "title": "Shipping an agent API",
-    "content": "<p>Intro</p><img src=\"https://assets.nickbell.dev/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png\" alt=\"Screenshot\">",
-    "featured_image": "blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png"
-  }'
-```
-
-**Response `201` (BlogResource + admin link)**
-
-```json
-{
-  "data": {
-    "id": 42,
-    "title": "Shipping an agent API",
-    "slug": "shipping-an-agent-api",
-    "excerpt": null,
-    "content": "<p>Intro</p><img src=\"...\" alt=\"Screenshot\">",
-    "featured_image": "https://assets.nickbell.dev/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png",
-    "meta_description": null,
-    "published_at": null,
-    "read_time": 1
-  },
-  "admin_url": "https://api.nickbell.dev/admin/blogs/42/edit"
-}
-```
-
-### PATCH /api/v1/blogs/{id}
-
-**Route name:** `v1.blogs.update`
-**Middleware:** `api`, `auth:sanctum`
-
-Partially updates a draft. Only the fields you send are changed. Status and publish date can't be changed here.
-
-| Parameter | Type | Rules |
-|-----------|------|-------|
-| title | string | optional, max 255 |
-| content | string (HTML) | optional |
-| slug | string | optional, max 255, unique (the post's own slug is allowed) |
-| excerpt | string \| null | optional, max 230 |
-| meta_description | string \| null | optional, max 255 |
-| featured_image | string \| null | optional; a `path` or `url` from `POST /api/v1/media`, or `null` to remove it |
-
-```bash
-curl -X PATCH https://api.nickbell.dev/api/v1/blogs/42 \
-  -H "Accept: application/json" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"title": "Shipping a small agent API", "excerpt": "Uploads, drafts and revisions."}'
-```
-
-**Response `200`:** same shape as `POST /api/v1/blogs`.
-
-**Errors**
-
-| Status | When |
-|--------|------|
-| `401` | Missing or invalid token |
-| `404` | No blog with that id |
-| `409` | The blog is published: `{"message": "Only draft blogs can be updated through the API."}` |
-| `422` | Validation failed, e.g. slug taken or `featured_image` not uploaded through `/media` |
+Create and update both return the blog as `data` plus an `admin_url` link to it in Filament.
 
 ## CI/CD
 

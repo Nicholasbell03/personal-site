@@ -95,6 +95,12 @@ class BlogController extends Controller
         return response()->json($data);
     }
 
+    /**
+     * Create a blog draft.
+     *
+     * Always creates a draft, whatever `status` is sent. Set `featured_image` to a `path` or `url`
+     * returned by `POST /api/v1/media`, and embed image URLs directly in the `content` HTML.
+     */
     public function store(StoreBlogRequest $request, CreateBlogDraft $createBlogDraft): JsonResponse
     {
         $blog = $createBlogDraft->execute($request->validated());
@@ -102,6 +108,12 @@ class BlogController extends Controller
         return $this->draftResponse($blog, 201);
     }
 
+    /**
+     * Update a blog draft.
+     *
+     * Partial update: only the fields sent are changed, and `featured_image: null` removes the image.
+     * Published blogs return 409, so a live post can never be changed through the API.
+     */
     public function update(UpdateBlogRequest $request, Blog $blog, UpdateBlogDraft $updateBlogDraft): JsonResponse
     {
         $blog = $updateBlogDraft->execute($blog, $request->validated());
@@ -120,9 +132,9 @@ class BlogController extends Controller
 
     private function draftResponse(Blog $blog, int $status): JsonResponse
     {
-        return response()->json([
-            'data' => (new BlogResource($blog))->resolve(),
-            'admin_url' => FilamentBlogResource::getUrl('edit', ['record' => $blog]),
-        ], $status);
+        return (new BlogResource($blog))
+            ->additional(['admin_url' => FilamentBlogResource::getUrl('edit', ['record' => $blog])])
+            ->response()
+            ->setStatusCode($status);
     }
 }

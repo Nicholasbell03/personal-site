@@ -25,6 +25,7 @@ class UpdateBlogRequest extends FormRequest
             'slug' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('blogs', 'slug')->ignore($this->route('blog'))],
             'excerpt' => ['sometimes', 'nullable', 'string', 'max:230'],
             'meta_description' => ['sometimes', 'nullable', 'string', 'max:255'],
+            /** A `path` or `url` returned by `POST /api/v1/media`, or `null` to remove the image. */
             'featured_image' => ['sometimes', 'nullable', 'string', new StoredBlogImage],
         ];
     }

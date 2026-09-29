@@ -24,6 +24,7 @@ class StoreBlogRequest extends FormRequest
             'slug' => ['nullable', 'string', 'max:255', 'unique:blogs,slug'],
             'excerpt' => ['nullable', 'string', 'max:230'],
             'meta_description' => ['nullable', 'string', 'max:255'],
+            /** A `path` or `url` returned by `POST /api/v1/media`. */
             'featured_image' => ['nullable', 'string', new StoredBlogImage],
         ];
     }

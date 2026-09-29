@@ -2,21 +2,15 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Contracts\Debug\ShouldntReport;
-use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 /**
- * An expected refusal, logged as a warning by the caller rather than reported as an error.
+ * An expected refusal (409), logged as a warning by the caller. HTTP exceptions aren't reported as errors.
  */
-class BlogNotDraftException extends \RuntimeException implements ShouldntReport
+class BlogNotDraftException extends ConflictHttpException
 {
     public function __construct()
     {
         parent::__construct('Only draft blogs can be updated through the API.');
-    }
-
-    public function render(): JsonResponse
-    {
-        return response()->json(['message' => $this->getMessage()], 409);
     }
 }

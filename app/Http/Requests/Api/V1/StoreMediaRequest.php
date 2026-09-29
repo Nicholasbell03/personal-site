@@ -21,6 +21,7 @@ class StoreMediaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /** A png, jpg/jpeg, webp, avif or gif image, up to 10 MB. The type is checked from the file contents, and SVG is rejected. */
             'file' => ['required', File::types(BlogImages::EXTENSIONS)->max(BlogImages::MAX_KILOBYTES)],
         ];
     }
