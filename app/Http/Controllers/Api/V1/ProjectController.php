@@ -2,126 +2,56 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\PublishStatus;
+use App\Actions\CreateProjectDraft;
 use App\Filament\Resources\Projects\ProjectResource as FilamentProjectResource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreProjectRequest;
 use App\Http\Resources\ProjectResource;
-use App\Http\Resources\ProjectSummaryResource;
-use App\Http\Resources\RelatedItemResource;
-use App\Models\Project;
-use App\Services\RelatedContentService;
+use App\Services\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ProjectController extends Controller
 {
-    private const CACHE_TTL = 60 * 60 * 24; // 24 hours
+    public function __construct(private ProjectService $projects) {}
 
     public function index(Request $request): JsonResponse
     {
-        $page = $request->integer('page', 1);
-        $cacheKey = Project::getApiCacheKey().".index.{$page}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            $projects = Project::query()
-                ->published()
-                ->with('technologies')
-                ->latestPublished()
-                ->paginate(10);
-
-            return ProjectSummaryResource::collection($projects)->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->projects->paginated($request->integer('page', 1)));
     }
 
     public function featured(): JsonResponse
     {
-        $cacheKey = Project::getApiCacheKey().'.featured';
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            $projects = Project::query()
-                ->published()
-                ->with('technologies')
-                ->featured()
-                ->latestPublished()
-                ->limit(3)
-                ->get();
-
-            return ProjectSummaryResource::collection($projects)->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->projects->featured());
     }
 
     public function show(string $slug): JsonResponse
     {
-        $cacheKey = Project::getApiCacheKey().".show.{$slug}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug) {
-            $project = Project::query()
-                ->published()
-                ->where('slug', $slug)
-                ->with('technologies')
-                ->firstOrFail();
-
-            return (new ProjectResource($project))->response()->getData(true);
-        });
-
-        return response()->json($data);
+        return response()->json($this->projects->show($slug));
     }
 
-    public function related(string $slug, RelatedContentService $service): JsonResponse
+    public function related(string $slug): JsonResponse
     {
-        $cacheKey = Project::getApiCacheKey().".related.{$slug}";
-
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($slug, $service) {
-            $project = Project::query()
-                ->published()
-                ->where('slug', $slug)
-                ->firstOrFail();
-
-            $next = $service->getNextItem($project);
-            $related = $service->getRelatedItems($project);
-
-            return [
-                'data' => [
-                    'next' => $next ? (new RelatedItemResource($next))->resolve() : null,
-                    'related' => $related->map(fn (array $item) => (new RelatedItemResource($item['item']))->resolve())->values()->all(),
-                ],
-            ];
-        });
-
-        return response()->json($data);
+        return response()->json($this->projects->related($slug));
     }
 
-    public function store(StoreProjectRequest $request): JsonResponse
+    /**
+     * Create a project draft.
+     *
+     * Always creates a draft. `technologies` takes a list of technology ids to attach.
+     */
+    public function store(StoreProjectRequest $request, CreateProjectDraft $createProjectDraft): JsonResponse
     {
-        $project = Project::create([
-            ...$request->safe()->except('technologies'),
-            'status' => PublishStatus::Draft,
-        ]);
+        $project = $createProjectDraft->execute($request->validated());
 
-        if ($request->validated('technologies')) {
-            $project->technologies()->attach($request->validated('technologies'));
-            $project->load('technologies');
-        }
-
-        return response()->json([
-            'data' => (new ProjectResource($project))->resolve(),
-            'admin_url' => FilamentProjectResource::getUrl('edit', ['record' => $project]),
-        ], 201);
+        return (new ProjectResource($project))
+            ->additional(['admin_url' => FilamentProjectResource::getUrl('edit', ['record' => $project])])
+            ->response()
+            ->setStatusCode(201);
     }
 
     public function preview(string $slug): ProjectResource
     {
-        $project = Project::query()
-            ->where('slug', $slug)
-            ->with('technologies')
-            ->firstOrFail();
-
-        return new ProjectResource($project);
+        return new ProjectResource($this->projects->findForPreview($slug));
     }
 }

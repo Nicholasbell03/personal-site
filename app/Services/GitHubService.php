@@ -6,6 +6,7 @@ use App\DataTransferObjects\ContributionActivity;
 use App\DataTransferObjects\ContributionDay;
 use App\DataTransferObjects\ContributionStats;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -14,6 +15,49 @@ class GitHubService
     private const GRAPHQL_URL = 'https://api.github.com/graphql';
 
     private const DAYS_TO_FETCH = 30;
+
+    private const CACHE_TTL = 60 * 60 * 24; // 24 hours
+
+    private const STALE_CACHE_TTL = 60 * 60 * 24 * 7; // 7 days
+
+    private const FAILURE_RETRY_TTL = 60 * 5; // 5 minutes
+
+    private const CACHE_KEY = 'api.v1.github.activity';
+
+    private const STALE_CACHE_KEY = 'api.v1.github.activity.stale';
+
+    /**
+     * Contribution activity, cached for 24 hours. When GitHub can't be reached, serves the last good
+     * snapshot (kept for 7 days) or an empty activity, and retries GitHub after 5 minutes.
+     */
+    public function contributionActivity(): ContributionActivity
+    {
+        /** @var ContributionActivity|null $cached */
+        $cached = Cache::get(self::CACHE_KEY);
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $fresh = $this->fetchContributionActivity();
+
+        if ($fresh !== null) {
+            Cache::put(self::CACHE_KEY, $fresh, self::CACHE_TTL);
+            Cache::put(self::STALE_CACHE_KEY, $fresh, self::STALE_CACHE_TTL);
+
+            return $fresh;
+        }
+
+        // Live fetch failed: serve the stale snapshot but only cache it
+        // briefly so the next request retries GitHub soon, instead of
+        // pinning stale data under the fresh key for a full 24 hours.
+        /** @var ContributionActivity $stale */
+        $stale = Cache::get(self::STALE_CACHE_KEY, ContributionActivity::empty());
+
+        Cache::put(self::CACHE_KEY, $stale, self::FAILURE_RETRY_TTL);
+
+        return $stale;
+    }
 
     /**
      * Fetch GitHub contribution activity for the configured user.
