@@ -193,3 +193,28 @@ it('rejects unauthenticated update requests', function () {
 
     expect($blog->refresh()->title)->toBe('Original');
 });
+
+it('refuses a published blog before validating the payload', function () {
+    $blog = Blog::factory()->published()->create(['title' => 'Live Post']);
+
+    $this->withHeader('Authorization', "Bearer {$this->token}")
+        ->patchJson("/api/v1/blogs/{$blog->id}", ['title' => str_repeat('a', 256)])
+        ->assertStatus(409)
+        ->assertJsonPath('message', 'Only draft blogs can be updated through the API.');
+
+    expect($blog->refresh()->title)->toBe('Live Post');
+});
+
+it('accepts an image url from a disk whose public url has a path prefix', function () {
+    Storage::fake('r2', ['url' => 'https://assets.nickbell.dev/media']);
+    Storage::disk('r2')->put('blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png', 'image');
+    $blog = Blog::factory()->draft()->create();
+
+    $this->withHeader('Authorization', "Bearer {$this->token}")
+        ->patchJson("/api/v1/blogs/{$blog->id}", [
+            'featured_image' => 'https://assets.nickbell.dev/media/blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png',
+        ])
+        ->assertOk();
+
+    expect($blog->refresh()->featured_image)->toBe('blog-images/01K6A1B2C3D4E5F6G7H8J9K0MN.png');
+});
