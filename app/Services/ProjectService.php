@@ -18,8 +18,9 @@ class ProjectService
     public function __construct(private RelatedContentService $relatedContent) {}
 
     /**
-     * Pagination links point at the index endpoint explicitly, because the cache is also warmed from
-     * `api:warm-cache`, where the current request is the CLI or `GET /api/warm-cache`.
+     * Pagination links are built from APP_URL and the index route, never the current request. The
+     * cache is warmed from `api:warm-cache` (the CLI or `GET /api/warm-cache`), and a forged Host or
+     * X-Forwarded-Host on a cold cache would otherwise be served to every visitor for 24 hours.
      *
      * @return array<string, mixed>
      */
@@ -31,7 +32,7 @@ class ProjectService
                 ->with('technologies')
                 ->latestPublished()
                 ->paginate(10, page: $page)
-                ->withPath(route('v1.projects.index'));
+                ->withPath(rtrim(config('app.url'), '/').route('v1.projects.index', absolute: false));
 
             return ProjectSummaryResource::collection($projects)->response()->getData(true);
         });
