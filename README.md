@@ -78,7 +78,7 @@ Agents can draft blog posts with images without anyone touching the admin panel.
 
 These endpoints cannot publish anything. New posts are always drafts, only drafts can be edited (published posts return `409`), and publishing is done by a person in Filament.
 
-1. **Upload each image.** png, jpg/jpeg, webp, avif or gif, up to 10 MB. SVG is rejected.
+1. **Upload each image.** png, jpg/jpeg, webp, avif or gif, up to 10 MB. SVG is rejected. Limited to 30 uploads a minute per token (`429` beyond that).
 
    ```bash
    curl -F file=@screenshot.png \

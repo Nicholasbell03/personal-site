@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -131,4 +132,8 @@ it('rejects unauthenticated uploads', function () {
         ->assertUnauthorized();
 
     expect(Storage::disk('r2')->allFiles())->toBeEmpty();
+});
+
+it('rate limits uploads per token', function () {
+    expect(Route::getRoutes()->getByName('v1.media.store')->gatherMiddleware())->toContain('throttle:30,1');
 });

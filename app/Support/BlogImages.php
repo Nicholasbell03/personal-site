@@ -42,17 +42,14 @@ class BlogImages
     }
 
     /**
-     * Turn a public URL returned by POST /api/v1/media back into its storage path.
+     * Turn a public URL returned by POST /api/v1/media back into its storage path by removing the
+     * disk's base URL, which may itself include a path (e.g. the local public disk's `/storage`).
      * Paths, and URLs that don't belong to the disk, are returned unchanged.
      */
     public static function pathFromUrl(string $value): string
     {
-        if (! Str::startsWith($value, ['http://', 'https://'])) {
-            return $value;
-        }
+        $baseUrl = rtrim(self::url(''), '/').'/';
 
-        $path = ltrim((string) parse_url($value, PHP_URL_PATH), '/');
-
-        return self::url($path) === $value ? $path : $value;
+        return Str::startsWith($value, $baseUrl) ? Str::after($value, $baseUrl) : $value;
     }
 }

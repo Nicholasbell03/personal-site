@@ -2,40 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\RecordChatExchange;
-use App\Actions\StartChatConversation;
-use App\Agents\PortfolioAgent;
+use App\Actions\StreamChatReply;
+use App\Exceptions\ChatUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ChatRequest;
-use App\Services\ChatConversationService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
-use Laravel\Ai\Responses\StreamedAgentResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChatController extends Controller
 {
-    public function __construct(
-        private ChatConversationService $conversations,
-        private StartChatConversation $startConversation,
-        private RecordChatExchange $recordExchange,
-    ) {}
+    public function __construct(private StreamChatReply $streamChatReply) {}
 
     public function __invoke(ChatRequest $request): Response
     {
-        $userId = $this->conversations->chatbotUserId();
-
-        if (! $userId) {
-            Log::error('ChatController: chatbot user not found — run ChatbotUserSeeder', [
-                'email' => config('chat.user.email'),
-            ]);
-            abort(500, 'Chat service is unavailable.');
-        }
-
+        // Generated here, not in the action, so error responses can still return it in X-Conversation-Id.
         $conversationId = $request->validated('conversation_id');
         $isNew = ! $conversationId;
 
@@ -44,25 +29,12 @@ class ChatController extends Controller
         }
 
         try {
-            if ($isNew) {
-                $this->startConversation->execute($conversationId, $userId, $request->ip());
-            }
-
-            $agent = new PortfolioAgent($this->conversations->recentMessages($conversationId));
-
-            $userMessage = $request->string('message')->toString();
-            $response = $agent->stream($userMessage);
-
-            $response->then(function (StreamedAgentResponse $streamed) use ($conversationId, $userId, $userMessage) {
-                try {
-                    $this->recordExchange->execute($conversationId, $userId, $userMessage, $streamed);
-                } catch (\Throwable $e) {
-                    Log::error('ChatController: failed to persist conversation messages', [
-                        'conversation_id' => $conversationId,
-                        'exception' => $e->getMessage(),
-                    ]);
-                }
-            });
+            $response = $this->streamChatReply->execute(
+                $conversationId,
+                $isNew,
+                $request->string('message')->toString(),
+                $request->ip(),
+            );
 
             // Stream the events manually (mirroring StreamableAgentResponse::toResponse)
             // so exceptions thrown mid-stream — after headers are sent — surface to the
@@ -96,6 +68,11 @@ class ChatController extends Controller
                 'X-Accel-Buffering' => 'no',
                 'X-Conversation-Id' => $conversationId,
             ]);
+        } catch (ChatUnavailableException) {
+            Log::error('ChatController: chatbot user not found — run ChatbotUserSeeder', [
+                'email' => config('chat.user.email'),
+            ]);
+            abort(500, 'Chat service is unavailable.');
         } catch (RateLimitedException $e) {
             Log::warning('ChatController: AI provider rate limited', [
                 'conversation_id' => $conversationId,
