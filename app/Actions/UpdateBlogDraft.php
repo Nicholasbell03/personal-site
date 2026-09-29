@@ -6,7 +6,6 @@ use App\Enums\PublishStatus;
 use App\Exceptions\BlogNotDraftException;
 use App\Models\Blog;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Log;
 
 class UpdateBlogDraft
 {
@@ -31,12 +30,7 @@ class UpdateBlogDraft
             $blog = Blog::query()->lockForUpdate()->findOrFail($blog->id);
 
             if ($blog->status !== PublishStatus::Draft) {
-                Log::warning('Refused API update of a non-draft blog', [
-                    'blog_id' => $blog->id,
-                    'status' => $blog->status->value,
-                ]);
-
-                throw new BlogNotDraftException;
+                throw BlogNotDraftException::for($blog);
             }
 
             $blog->update(Arr::only($attributes, self::EDITABLE_FIELDS));

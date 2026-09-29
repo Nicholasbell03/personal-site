@@ -50,6 +50,6 @@ class BlogImages
     {
         $baseUrl = rtrim(self::url(''), '/').'/';
 
-        return Str::startsWith($value, $baseUrl) ? Str::after($value, $baseUrl) : $value;
+        return Str::chopStart($value, $baseUrl);
     }
 }
