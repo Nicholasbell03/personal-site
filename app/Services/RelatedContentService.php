@@ -14,8 +14,6 @@ class RelatedContentService
 {
     private const MIN_SIMILARITY = 0.3;
 
-    private const RESULTS_PER_TYPE = 3;
-
     /**
      * Get the next chronologically published item of the same type.
      *
@@ -46,8 +44,8 @@ class RelatedContentService
 
     /**
      * Get the most similar items across all content types using pgvector, ranked by similarity with no
-     * preference for any type. Each type contributes its closest RESULTS_PER_TYPE candidates, which
-     * always contain the overall top $limit when $limit <= RESULTS_PER_TYPE.
+     * preference for any type. Each type contributes its closest $limit candidates, which always contain
+     * the overall top $limit.
      *
      * @param  Blog|Project|Share  $item
      * @return Collection<int, array{item: Blog|Project|Share, distance: float}>
@@ -84,7 +82,7 @@ class RelatedContentService
             }
 
             try {
-                $results = $query->limit(self::RESULTS_PER_TYPE)->get();
+                $results = $query->limit($limit)->get();
 
                 foreach ($results as $result) {
                     $candidates->push(['item' => $result, 'distance' => (float) $result->getAttribute('embedding_distance')]);

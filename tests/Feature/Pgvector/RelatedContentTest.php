@@ -27,7 +27,7 @@ beforeEach(function () {
  */
 function embeddingWithSimilarity(float $similarity): array
 {
-    $vector = array_fill(0, 1536, 0.0);
+    $vector = array_fill(0, (int) config('services.embeddings.dimensions'), 0.0);
     $vector[0] = $similarity;
     $vector[1] = sqrt(1 - $similarity ** 2);
 
@@ -44,7 +44,7 @@ function withSimilarity(Model $model, float $similarity): Model
 {
     $model->forceFill(['embedding' => embeddingWithSimilarity($similarity)])->saveQuietly();
 
-    return $model->refresh();
+    return $model;
 }
 
 /**
@@ -58,14 +58,23 @@ function relatedTitles(Model $item): array
         ->all();
 }
 
-it('ranks related items by similarity across content types', function () {
-    $viewed = withSimilarity(Share::factory()->create(['title' => 'Viewed share']), 1.0);
-
+/**
+ * Three weak blogs plus a strong project and share. Ranked by similarity the top 3 are
+ * Strong project, Strong share, Weak blog 1; by type order they would be the three blogs.
+ */
+function seedThreeWeakBlogsAndTwoStrongItems(): void
+{
     withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 1']), 0.35);
     withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 2']), 0.33);
     withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 3']), 0.31);
     withSimilarity(Project::factory()->published()->create(['title' => 'Strong project']), 0.92);
     withSimilarity(Share::factory()->create(['title' => 'Strong share']), 0.88);
+}
+
+it('ranks related items by similarity across content types', function () {
+    $viewed = withSimilarity(Share::factory()->create(['title' => 'Viewed share']), 1.0);
+
+    seedThreeWeakBlogsAndTwoStrongItems();
 
     expect(relatedTitles($viewed))->toBe(['Strong project', 'Strong share', 'Weak blog 1']);
 });
@@ -100,11 +109,7 @@ it('returns nothing when the viewed item has no embedding', function () {
 it('serves the ranked items from the related endpoint', function () {
     $viewed = withSimilarity(Blog::factory()->published()->create(), 1.0);
 
-    withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 1']), 0.35);
-    withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 2']), 0.33);
-    withSimilarity(Blog::factory()->published()->create(['title' => 'Weak blog 3']), 0.31);
-    withSimilarity(Project::factory()->published()->create(['title' => 'Strong project']), 0.92);
-    withSimilarity(Share::factory()->create(['title' => 'Strong share']), 0.88);
+    seedThreeWeakBlogsAndTwoStrongItems();
 
     $this->getJson("/api/v1/blogs/{$viewed->slug}/related")
         ->assertOk()
