@@ -57,11 +57,7 @@ class ProjectService
     public function show(string $slug): array
     {
         return Cache::remember(Project::getApiCacheKey().".show.{$slug}", self::CACHE_TTL, function () use ($slug) {
-            $project = Project::query()
-                ->published()
-                ->where('slug', $slug)
-                ->with('technologies')
-                ->firstOrFail();
+            $project = $this->findPublished($slug)->load('technologies');
 
             return (new ProjectResource($project))->response()->getData(true);
         });
@@ -73,10 +69,7 @@ class ProjectService
     public function related(string $slug): array
     {
         return Cache::remember(Project::getApiCacheKey().".related.{$slug}", self::CACHE_TTL, function () use ($slug) {
-            $project = Project::query()
-                ->published()
-                ->where('slug', $slug)
-                ->firstOrFail();
+            $project = $this->findPublished($slug);
 
             return $this->relatedContent->payloadFor($project);
         });
@@ -90,6 +83,14 @@ class ProjectService
         return Project::query()
             ->where('slug', $slug)
             ->with('technologies')
+            ->firstOrFail();
+    }
+
+    private function findPublished(string $slug): Project
+    {
+        return Project::query()
+            ->published()
+            ->where('slug', $slug)
             ->firstOrFail();
     }
 }

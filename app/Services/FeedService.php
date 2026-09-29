@@ -21,27 +21,8 @@ class FeedService
             $blogs = Blog::published()->latestPublished()->get();
             $projects = Project::published()->latestPublished()->get();
 
-            $blogItems = $blogs->map(fn (Blog $blog) => [
-                'title' => $blog->getDownstreamTitle(),
-                'link' => $blog->getDownstreamUrl(),
-                'description' => $blog->getDownstreamDescription(),
-                'pubDate' => $blog->published_at->toRfc2822String(),
-                'publishedAt' => $blog->published_at->getTimestamp(),
-                'category' => 'Blog',
-                'imageUrl' => $blog->getDownstreamImageUrl(),
-                'imageType' => self::mimeTypeFromPath($blog->featured_image),
-            ]);
-
-            $projectItems = $projects->map(fn (Project $project) => [
-                'title' => $project->getDownstreamTitle(),
-                'link' => $project->getDownstreamUrl(),
-                'description' => $project->getDownstreamDescription(),
-                'pubDate' => $project->published_at->toRfc2822String(),
-                'publishedAt' => $project->published_at->getTimestamp(),
-                'category' => 'Project',
-                'imageUrl' => $project->getDownstreamImageUrl(),
-                'imageType' => self::mimeTypeFromPath($project->featured_image),
-            ]);
+            $blogItems = $blogs->map(fn (Blog $blog) => self::item($blog, 'Blog'));
+            $projectItems = $projects->map(fn (Project $project) => self::item($project, 'Project'));
 
             $items = $blogItems->toBase()
                 ->merge($projectItems)
@@ -54,6 +35,23 @@ class FeedService
                 'frontendUrl' => config('app.frontend_url'),
             ])->render();
         });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function item(Blog|Project $model, string $category): array
+    {
+        return [
+            'title' => $model->getDownstreamTitle(),
+            'link' => $model->getDownstreamUrl(),
+            'description' => $model->getDownstreamDescription(),
+            'pubDate' => $model->published_at->toRfc2822String(),
+            'publishedAt' => $model->published_at->getTimestamp(),
+            'category' => $category,
+            'imageUrl' => $model->getDownstreamImageUrl(),
+            'imageType' => self::mimeTypeFromPath($model->featured_image),
+        ];
     }
 
     private static function mimeTypeFromPath(?string $path): ?string
