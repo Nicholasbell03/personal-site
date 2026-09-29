@@ -53,6 +53,21 @@ This application is deployed on Render's free tier. Key constraints:
 
 ---
 
+## Vector Search Tests (PostgreSQL + pgvector)
+
+The main suite runs on in-memory SQLite, where vector similarity search (`whereVectorSimilarTo`) always returns nothing. Tests for vector search live in `tests/Feature/Pgvector/` and run against real PostgreSQL with `phpunit.pgvector.xml`:
+
+```bash
+docker exec laravel_app vendor/bin/pest -c phpunit.pgvector.xml
+```
+
+- The config forces the `testing` database. `RefreshDatabase` wipes whatever database it connects to, so never point these tests at `DB_DATABASE` from `.env`.
+- First time locally, create the database: `docker exec postgres_db psql -U postgres -d personal-site -c "CREATE DATABASE testing TEMPLATE template0;"`
+- Build embeddings by hand (see `embeddingWithSimilarity()` in `RelatedContentTest`) so similarities are exact, and `Queue::fake()` so no AI provider is called.
+- CI runs them in the `pgvector` job against `pgvector/pgvector:pg17`, which matches production Supabase.
+
+---
+
 ## Related Frontend Repository
 
 This Laravel backend serves as the API for a React frontend located at `../nickbell-frontend`.
