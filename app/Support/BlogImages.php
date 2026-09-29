@@ -37,7 +37,7 @@ class BlogImages
     {
         $extensions = implode('|', self::EXTENSIONS);
 
-        return preg_match('#^'.self::DIRECTORY.'/[A-Za-z0-9_-]+\.('.$extensions.')$#', $path) === 1
+        return preg_match('#^'.self::DIRECTORY.'/[A-Za-z0-9_-]+\.('.$extensions.')$#D', $path) === 1
             && self::disk()->exists($path);
     }
 
