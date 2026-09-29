@@ -6,7 +6,6 @@ use App\Enums\PublishStatus;
 use App\Exceptions\BlogNotDraftException;
 use App\Models\Blog;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class UpdateBlogDraft
@@ -28,7 +27,7 @@ class UpdateBlogDraft
      */
     public function execute(Blog $blog, array $attributes): Blog
     {
-        return DB::transaction(function () use ($blog, $attributes) {
+        return $blog->getConnection()->transaction(function () use ($blog, $attributes) {
             $blog = Blog::query()->lockForUpdate()->findOrFail($blog->id);
 
             if ($blog->status !== PublishStatus::Draft) {
