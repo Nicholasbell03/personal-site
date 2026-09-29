@@ -11,13 +11,12 @@ use Illuminate\Support\Facades\Queue;
 /**
  * Related content against real PostgreSQL + pgvector (run with phpunit.pgvector.xml).
  *
- * Embeddings are built by hand, so each item's cosine similarity to the viewed item is exact and no
- * AI provider is called.
+ * Embeddings are built by hand, so each item's cosine similarity to the viewed item is exact. The queue
+ * is faked because saving content queues embedding and social-posting jobs, which would call AI providers.
  */
 beforeEach(function () {
     expect(DB::getDriverName())->toBe('pgsql', 'Run with: vendor/bin/pest -c phpunit.pgvector.xml');
 
-    // Saving content queues embedding and social-posting jobs; keep them (and any AI calls) out.
     Queue::fake();
 });
 
