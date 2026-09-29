@@ -46,3 +46,12 @@ it('treats a page below 1 as the first page', function (int $page) {
         ->assertJsonCount(10, 'data')
         ->assertJsonPath('meta.current_page', 1);
 })->with([0, -1]);
+
+it('returns an empty page for a page number far beyond the last', function (string $page) {
+    Blog::factory()->count(11)->published()->create();
+
+    $this->getJson("/api/v1/blogs?page={$page}")
+        ->assertOk()
+        ->assertJsonCount(0, 'data')
+        ->assertJsonPath('meta.total', 11);
+})->with(['999', '9223372036854775807', '99999999999999999999']);

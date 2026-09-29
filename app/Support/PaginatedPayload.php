@@ -21,10 +21,16 @@ class PaginatedPayload
     public static function make(array $items, int $page): array
     {
         $page = max(1, $page);
+        $total = count($items);
+
+        // Guard first: an absurd ?page= would overflow the offset into a float and 500.
+        $slice = $page > (int) ceil($total / self::PER_PAGE)
+            ? []
+            : array_slice($items, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
 
         $paginator = new LengthAwarePaginator(
-            array_slice($items, ($page - 1) * self::PER_PAGE, self::PER_PAGE),
-            count($items),
+            $slice,
+            $total,
             self::PER_PAGE,
             $page,
             ['path' => Paginator::resolveCurrentPath()],
