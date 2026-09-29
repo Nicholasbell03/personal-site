@@ -37,7 +37,7 @@ class StreamChatReply
             try {
                 $this->recordExchange->execute($conversationId, $userId, $message, $reply);
             } catch (\Throwable $e) {
-                Log::error('StreamChatReply: failed to persist conversation messages', [
+                Log::error('ChatController: failed to persist conversation messages', [
                     'conversation_id' => $conversationId,
                     'exception' => $e->getMessage(),
                 ]);
