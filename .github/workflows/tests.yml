@@ -44,11 +44,61 @@ jobs:
       - name: Run tests
         run: vendor/bin/pest --parallel --shard=${{ matrix.shard }}/4
 
+  # Vector similarity search only works on PostgreSQL with pgvector, so these tests
+  # (tests/Feature/Pgvector) run against a real database. pg17 matches production Supabase.
+  pgvector:
+    if: ${{ !github.event.pull_request.draft }}
+    name: Pest (PostgreSQL + pgvector)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # phpunit.pgvector.xml forces DB_CONNECTION=pgsql and DB_DATABASE=testing.
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: mbstring, dom, fileinfo, pdo_pgsql, pgsql, pcntl
+          coverage: none
+
+      - name: Install Composer dependencies
+        uses: ramsey/composer-install@v3
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run pgvector tests
+        run: vendor/bin/pest -c phpunit.pgvector.xml
+
   test-results:
     if: ${{ !github.event.pull_request.draft }}
     name: Test Results
-    needs: tests
+    needs: [tests, pgvector]
     runs-on: ubuntu-latest
     steps:
-      - name: All shards passed
-        run: echo "All 4 test shards passed successfully."
+      - name: All test jobs passed
+        run: echo "All 4 SQLite shards and the pgvector suite passed successfully."
