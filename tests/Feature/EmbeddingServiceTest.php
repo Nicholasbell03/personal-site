@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Embeddings;
 use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\EmbeddingsResponse;
 
 it('generates and stores embedding for a model', function () {
@@ -16,7 +17,7 @@ it('generates and stores embedding for a model', function () {
     $dimensions = config('services.embeddings.dimensions');
     $fakeEmbedding = Embeddings::fakeEmbedding($dimensions);
     Embeddings::fake([
-        new EmbeddingsResponse([$fakeEmbedding], 100, new Meta('openai', 'text-embedding-3-small')),
+        new EmbeddingsResponse([$fakeEmbedding], new Usage(100), new Meta('openai', 'text-embedding-3-small')),
     ]);
 
     $blog = Blog::factory()->published()->create([
@@ -86,7 +87,7 @@ it('uses saveQuietly to prevent re-triggering model events', function () {
     $dimensions = config('services.embeddings.dimensions');
     $fakeEmbedding = Embeddings::fakeEmbedding($dimensions);
     Embeddings::fake([
-        new EmbeddingsResponse([$fakeEmbedding], 100, new Meta('openai', 'text-embedding-3-small')),
+        new EmbeddingsResponse([$fakeEmbedding], new Usage(100), new Meta('openai', 'text-embedding-3-small')),
     ]);
 
     $blog = Blog::factory()->published()->create([

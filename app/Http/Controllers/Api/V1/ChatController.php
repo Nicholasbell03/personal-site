@@ -6,10 +6,10 @@ use App\Actions\StreamChatReply;
 use App\Exceptions\ChatUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ChatRequest;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
+use Laravel\Ai\Exceptions\ProviderConnectionException;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Exceptions\RateLimitedException;
 use Symfony\Component\HttpFoundation\Response;
@@ -82,7 +82,7 @@ class ChatController extends Controller
             [$code, $message] = $this->streamErrorDetails($e);
 
             return $this->sseError($message, $conversationId, $code, 429);
-        } catch (ConnectionException $e) {
+        } catch (ProviderConnectionException $e) {
             Log::warning('ChatController: AI provider connection failed', [
                 'conversation_id' => $conversationId,
                 'exception' => $e->getMessage(),
@@ -128,7 +128,7 @@ class ChatController extends Controller
                 'rate_limited',
                 'The AI service is currently overloaded. Please try again in a moment.',
             ],
-            $e instanceof ConnectionException => [
+            $e instanceof ProviderConnectionException => [
                 'unavailable',
                 'The AI service is temporarily unavailable. Please try again shortly.',
             ],

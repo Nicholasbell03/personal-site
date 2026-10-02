@@ -1,6 +1,8 @@
 <?php
 
 use App\Agents\PortfolioAgent;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Enums\Lab;
 
 it('returns the primary and fallback providers in failover order', function () {
@@ -57,7 +59,7 @@ it('passes low thinking level to gemini', function () {
     $agent = new PortfolioAgent;
 
     expect($agent->providerOptions(Lab::Gemini))->toBe([
-        'thinkingConfig' => ['thinkingLevel' => 'low'],
+        'thinking_level' => 'low',
     ]);
 });
 
@@ -79,4 +81,47 @@ it('defaults timeout to 15', function () {
     $agent = new PortfolioAgent;
 
     expect($agent->timeout())->toBe(15);
+});
+
+it('sends the reasoning effort on the openai request', function () {
+    config()->set('agent.portfolio.openai_reasoning_effort', 'low');
+    config()->set('ai.providers.openai.key', 'test-key');
+
+    Http::fake([
+        'api.openai.com/*' => Http::response([
+            'id' => 'resp_1',
+            'model' => 'gpt-5.1',
+            'status' => 'completed',
+            'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => 'Hi']]]],
+        ]),
+    ]);
+
+    $response = (new PortfolioAgent)->prompt('Hello', provider: 'openai', model: 'gpt-5.1');
+
+    expect($response->text)->toBe('Hi');
+    Http::assertSent(fn (Request $request) => $request['reasoning'] === ['effort' => 'low']);
+});
+
+it('fails over to gemini with the thinking level in generation_config', function () {
+    config()->set('agent.portfolio.gemini_thinking_level', 'low');
+    config()->set('ai.providers.openai.key', 'test-key');
+    config()->set('ai.providers.gemini.key', 'test-key');
+
+    Http::fake([
+        'api.openai.com/*' => Http::response(['error' => ['message' => 'Rate limit reached']], 429),
+        '*/interactions*' => Http::response([
+            'status' => 'completed',
+            'steps' => [['type' => 'model_output', 'content' => [['type' => 'text', 'text' => 'Hi from Gemini']]]],
+        ]),
+    ]);
+
+    $response = (new PortfolioAgent)->prompt('Hello', provider: [
+        'openai' => 'gpt-5.1',
+        'gemini' => 'gemini-3.5-flash',
+    ]);
+
+    expect($response->text)->toBe('Hi from Gemini');
+    Http::assertSent(fn (Request $request) => str_contains($request->url(), '/interactions')
+        && $request['generation_config']['thinking_level'] === 'low'
+        && ! array_key_exists('thinkingConfig', $request['generation_config']));
 });

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e868223845137bb3b2f4b4c7c88f3acf",
+    "content-hash": "93b6d8ab9f082ff222353528865aa547",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -2475,20 +2475,19 @@
         },
         {
             "name": "laravel/ai",
-            "version": "v0.9.1",
+            "version": "v1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/ai.git",
-                "reference": "2760a62bff6ab515cdf10222f61b7973356450e1"
+                "reference": "127fce89bc620fcf942252837669c2fc0895f4b3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/ai/zipball/2760a62bff6ab515cdf10222f61b7973356450e1",
-                "reference": "2760a62bff6ab515cdf10222f61b7973356450e1",
+                "url": "https://api.github.com/repos/laravel/ai/zipball/127fce89bc620fcf942252837669c2fc0895f4b3",
+                "reference": "127fce89bc620fcf942252837669c2fc0895f4b3",
                 "shasum": ""
             },
             "require": {
-                "aws/aws-sdk-php": "^3.339",
                 "illuminate/console": "^12.0|^13.0",
                 "illuminate/container": "^12.0|^13.0",
                 "illuminate/contracts": "^12.0|^13.0",
@@ -2500,16 +2499,24 @@
                 "laravel/serializable-closure": "^2.0",
                 "php": "^8.3"
             },
+            "conflict": {
+                "aws/aws-sdk-php": "<3.369.1",
+                "laravel/mcp": "<1.0"
+            },
             "require-dev": {
-                "laravel/mcp": "^0.8",
+                "aws/aws-sdk-php": "^3.369.1",
+                "driftingly/rector-laravel": "^2.5",
+                "jasonmccreary/double": "^1.0",
+                "laravel/mcp": "^1.0",
                 "laravel/pint": "^1.26",
-                "mockery/mockery": "^1.6.12",
                 "orchestra/testbench": "^10.6|^11.0",
                 "pestphp/pest": "^3.0|^4.0",
                 "pestphp/pest-plugin-laravel": "^3.0|^4.0",
-                "phpstan/phpstan": "^2.1"
+                "phpstan/phpstan": "^2.1",
+                "rector/rector": "^2.5"
             },
             "suggest": {
+                "aws/aws-sdk-php": "Required to use the Bedrock provider.",
                 "laravel/mcp": "Required to use MCP client tools or MCP server tools with Laravel AI agents."
             },
             "type": "library",
@@ -2545,7 +2552,7 @@
                 "issues": "https://github.com/laravel/ai/issues",
                 "source": "https://github.com/laravel/ai"
             },
-            "time": "2026-07-14T18:41:31+00:00"
+            "time": "2026-09-29T18:50:17+00:00"
         },
         {
             "name": "laravel/framework",

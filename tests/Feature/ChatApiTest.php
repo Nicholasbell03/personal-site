@@ -1,11 +1,14 @@
 <?php
 
 use App\Agents\PortfolioAgent;
+use App\Models\Blog;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
+use Laravel\Ai\Exceptions\ProviderConnectionException;
 
 beforeEach(function () {
     Cache::forget('chat.user_id');
@@ -176,6 +179,60 @@ it('does not cache null user_id', function () {
     expect(Cache::get('chat.user_id'))->toBeNull();
 });
 
+it('streams a provider tool call and answer through to the client', function () {
+    config()->set('agent.portfolio.provider', 'openai');
+    config()->set('agent.portfolio.model', 'gpt-5.1');
+    config()->set('agent.portfolio.fallback_provider', null);
+    config()->set('ai.providers.openai.key', 'test-key');
+
+    Blog::factory()->published()->create(['title' => 'Upgrading Laravel AI']);
+
+    $sse = fn (array ...$events) => collect($events)
+        ->map(fn (array $event) => 'data: '.json_encode($event)."\n\n")
+        ->join('');
+
+    Http::fakeSequence('api.openai.com/*')
+        ->push($sse(
+            ['type' => 'response.created', 'response' => ['id' => 'resp_1', 'model' => 'gpt-5.1']],
+            ['type' => 'response.output_item.added', 'output_index' => 0, 'item' => ['type' => 'function_call', 'id' => 'fc_1', 'call_id' => 'call_1', 'name' => 'GetBlogs']],
+            ['type' => 'response.function_call_arguments.done', 'item_id' => 'fc_1', 'arguments' => '{"limit":1}'],
+            ['type' => 'response.completed', 'response' => ['id' => 'resp_1', 'status' => 'completed', 'output' => [['type' => 'function_call', 'status' => 'completed']], 'usage' => ['input_tokens' => 50, 'output_tokens' => 5]]],
+        ), 200, ['Content-Type' => 'text/event-stream'])
+        ->push($sse(
+            ['type' => 'response.created', 'response' => ['id' => 'resp_2', 'model' => 'gpt-5.1']],
+            ['type' => 'response.output_text.delta', 'delta' => 'Here is '],
+            ['type' => 'response.output_text.delta', 'delta' => 'the latest post.'],
+            ['type' => 'response.output_text.done'],
+            ['type' => 'response.completed', 'response' => ['id' => 'resp_2', 'status' => 'completed', 'output' => [['type' => 'message', 'status' => 'completed']], 'usage' => ['input_tokens' => 80, 'output_tokens' => 10]]],
+        ), 200, ['Content-Type' => 'text/event-stream']);
+
+    $response = $this->post('/api/v1/chat', [
+        'message' => 'What did Nick write recently?',
+    ], ['Accept' => 'application/json']);
+
+    $events = collect(explode("\n\n", $response->streamedContent()))
+        ->filter(fn (string $line) => str_starts_with($line, 'data: {'))
+        ->map(fn (string $line) => json_decode(substr($line, 6), true))
+        ->values();
+
+    $toolResult = $events->firstWhere('type', 'tool_result');
+
+    expect($events->where('type', 'error'))->toBeEmpty()
+        ->and($toolResult['tool_name'])->toBe('GetBlogs')
+        ->and($toolResult['successful'])->toBeTrue()
+        ->and($toolResult['result'])->toContain('Upgrading Laravel AI')
+        ->and($events->where('type', 'text_delta')->pluck('delta')->join(''))->toBe('Here is the latest post.');
+
+    $reply = DB::table('agent_conversation_messages')
+        ->where('conversation_id', $response->headers->get('X-Conversation-Id'))
+        ->where('role', 'assistant')
+        ->first();
+
+    expect($reply->content)->toBe('Here is the latest post.')
+        ->and(json_decode($reply->tool_calls, true))->toHaveCount(1)
+        ->and(json_decode($reply->usage, true))->toMatchArray(['input_tokens' => 130, 'output_tokens' => 15]);
+});
+
 it('emits an SSE error event when the provider runs out of credits mid-stream', function () {
     PortfolioAgent::fake(function () {
         throw InsufficientCreditsException::forProvider('openai');
@@ -192,6 +249,24 @@ it('emits an SSE error event when the provider runs out of credits mid-stream', 
     expect($content)->toContain('"type":"error"')
         ->and($content)->toContain('"code":"insufficient_credits"')
         ->and($content)->toContain('out of credits')
+        ->and($content)->toContain('data: [DONE]');
+});
+
+it('emits an unavailable SSE error event when the provider cannot be reached mid-stream', function () {
+    PortfolioAgent::fake(function () {
+        throw ProviderConnectionException::forProvider('openai');
+    });
+
+    $response = $this->post('/api/v1/chat', [
+        'message' => 'Hello there',
+    ], ['Accept' => 'application/json']);
+
+    $response->assertOk();
+
+    $content = $response->streamedContent();
+
+    expect($content)->toContain('"type":"error"')
+        ->and($content)->toContain('"code":"unavailable"')
         ->and($content)->toContain('data: [DONE]');
 });
 

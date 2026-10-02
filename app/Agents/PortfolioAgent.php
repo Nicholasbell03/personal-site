@@ -68,9 +68,9 @@ class PortfolioAgent implements Agent, Conversational, HasProviderOptions, HasTo
             Lab::OpenAI => [
                 'reasoning' => ['effort' => config('agent.portfolio.openai_reasoning_effort')],
             ],
-            // Merged into generationConfig by the Gemini gateway
+            // Merged into generation_config by the Gemini gateway (Interactions API field name)
             Lab::Gemini => [
-                'thinkingConfig' => ['thinkingLevel' => config('agent.portfolio.gemini_thinking_level')],
+                'thinking_level' => config('agent.portfolio.gemini_thinking_level'),
             ],
             default => [],
         };
