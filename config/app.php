@@ -149,4 +149,16 @@ return [
 
     'admin_email' => env('ADMIN_EMAIL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cron Secret
+    |--------------------------------------------------------------------------
+    |
+    | Shared secret cronjob.org sends in the X-Cron-Secret header when calling
+    | the scheduled-task endpoints. They refuse all requests when it's unset.
+    |
+    */
+
+    'cron_secret' => env('CRON_SECRET'),
+
 ];

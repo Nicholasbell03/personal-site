@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RequireCronSecret;
 use App\Http\Middleware\ValidateBrowserRequest;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'browser' => ValidateBrowserRequest::class,
             'abilities' => CheckAbilities::class,
+            'cron' => RequireCronSecret::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

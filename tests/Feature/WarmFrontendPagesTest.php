@@ -56,7 +56,7 @@ it('exposes warming via the api route with cronjob-friendly statuses', function 
         'https://frontend.test/*' => Http::response('ok'),
     ]);
 
-    $this->getJson('/api/warm-frontend')->assertOk()->assertJsonPath('status', 'ok');
+    $this->withHeader('X-Cron-Secret', 'test-cron-secret')->getJson('/api/warm-frontend')->assertOk()->assertJsonPath('status', 'ok');
 });
 
 it('returns 503 from the api route when warming fails', function () {
@@ -64,5 +64,5 @@ it('returns 503 from the api route when warming fails', function () {
         'https://frontend.test/sitemap.xml' => Http::response(null, 500),
     ]);
 
-    $this->getJson('/api/warm-frontend')->assertStatus(503);
+    $this->withHeader('X-Cron-Secret', 'test-cron-secret')->getJson('/api/warm-frontend')->assertStatus(503);
 });
