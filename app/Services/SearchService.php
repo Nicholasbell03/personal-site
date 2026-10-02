@@ -8,8 +8,10 @@ use App\Http\Resources\ShareSummaryResource;
 use App\Models\Blog;
 use App\Models\Project;
 use App\Models\Share;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -189,7 +191,7 @@ class SearchService
 
         $k = 60;
         $scores = [];
-        /** @var array<int, \Illuminate\Database\Eloquent\Model> $models */
+        /** @var array<int, Model> $models */
         $models = [];
 
         foreach ($vectorResults->values() as $i => $model) {
@@ -266,7 +268,7 @@ class SearchService
         $cacheKey = 'search.embedding.'.hash('sha256', $normalized);
 
         /** @var list<float>|null $cached */
-        $cached = Cache::get($cacheKey);
+        $cached = $this->embeddingCache()->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -288,7 +290,7 @@ class SearchService
 
             $embedding = $response->embeddings[0];
 
-            Cache::put($cacheKey, $embedding, self::EMBEDDING_CACHE_TTL);
+            $this->embeddingCache()->put($cacheKey, $embedding, self::EMBEDDING_CACHE_TTL);
 
             return $embedding;
         } catch (\Throwable $e) {
@@ -314,5 +316,10 @@ class SearchService
     private function isDefaultConnectionPostgres(): bool
     {
         return DB::connection()->getDriverName() === 'pgsql';
+    }
+
+    private function embeddingCache(): Repository
+    {
+        return Cache::store(config('services.embeddings.query_cache_store'));
     }
 }
