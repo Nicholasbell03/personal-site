@@ -63,7 +63,7 @@ it('logs error and returns false on API failure', function () {
     Queue::fake();
 
     Embeddings::fake(function () {
-        throw new \RuntimeException('API connection failed');
+        throw new RuntimeException('API connection failed');
     });
 
     Log::shouldReceive('error')

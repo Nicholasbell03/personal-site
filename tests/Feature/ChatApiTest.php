@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
@@ -180,10 +181,14 @@ it('does not cache null user_id', function () {
 });
 
 it('streams a provider tool call and answer through to the client', function () {
-    config()->set('agent.portfolio.provider', 'openai');
-    config()->set('agent.portfolio.model', 'gpt-5.1');
-    config()->set('agent.portfolio.fallback_provider', null);
-    config()->set('ai.providers.openai.key', 'test-key');
+    config([
+        'agent.portfolio.provider' => 'openai',
+        'agent.portfolio.fallback_provider' => null,
+        'ai.providers.openai.key' => 'test-key',
+    ]);
+
+    // Creating a blog queues embedding generation, which would call OpenAI unfaked.
+    Queue::fake();
 
     Blog::factory()->published()->create(['title' => 'Upgrading Laravel AI']);
 
@@ -233,9 +238,9 @@ it('streams a provider tool call and answer through to the client', function () 
         ->and(json_decode($reply->usage, true))->toMatchArray(['input_tokens' => 130, 'output_tokens' => 15]);
 });
 
-it('emits an SSE error event when the provider runs out of credits mid-stream', function () {
-    PortfolioAgent::fake(function () {
-        throw InsufficientCreditsException::forProvider('openai');
+it('emits an SSE error event when the provider fails mid-stream', function (Throwable $exception, string $code, string $message) {
+    PortfolioAgent::fake(function () use ($exception) {
+        throw $exception;
     });
 
     $response = $this->post('/api/v1/chat', [
@@ -247,46 +252,14 @@ it('emits an SSE error event when the provider runs out of credits mid-stream', 
     $content = $response->streamedContent();
 
     expect($content)->toContain('"type":"error"')
-        ->and($content)->toContain('"code":"insufficient_credits"')
-        ->and($content)->toContain('out of credits')
+        ->and($content)->toContain('"code":"'.$code.'"')
+        ->and($content)->toContain($message)
         ->and($content)->toContain('data: [DONE]');
-});
-
-it('emits an unavailable SSE error event when the provider cannot be reached mid-stream', function () {
-    PortfolioAgent::fake(function () {
-        throw ProviderConnectionException::forProvider('openai');
-    });
-
-    $response = $this->post('/api/v1/chat', [
-        'message' => 'Hello there',
-    ], ['Accept' => 'application/json']);
-
-    $response->assertOk();
-
-    $content = $response->streamedContent();
-
-    expect($content)->toContain('"type":"error"')
-        ->and($content)->toContain('"code":"unavailable"')
-        ->and($content)->toContain('data: [DONE]');
-});
-
-it('emits a generic SSE error event for unexpected mid-stream failures', function () {
-    PortfolioAgent::fake(function () {
-        throw new RuntimeException('boom');
-    });
-
-    $response = $this->post('/api/v1/chat', [
-        'message' => 'Hello there',
-    ], ['Accept' => 'application/json']);
-
-    $response->assertOk();
-
-    $content = $response->streamedContent();
-
-    expect($content)->toContain('"type":"error"')
-        ->and($content)->toContain('"code":"internal_error"')
-        ->and($content)->toContain('data: [DONE]');
-});
+})->with([
+    'out of credits' => [InsufficientCreditsException::forProvider('openai'), 'insufficient_credits', 'out of credits'],
+    'unreachable provider' => [ProviderConnectionException::forProvider('openai'), 'unavailable', 'temporarily unavailable'],
+    'unexpected failure' => [new RuntimeException('boom'), 'internal_error', 'Something went wrong'],
+]);
 
 it('is rate limited', function () {
     PortfolioAgent::fake(array_fill(0, 15, 'Response'));

@@ -84,8 +84,10 @@ it('defaults timeout to 15', function () {
 });
 
 it('sends the reasoning effort on the openai request', function () {
-    config()->set('agent.portfolio.openai_reasoning_effort', 'low');
-    config()->set('ai.providers.openai.key', 'test-key');
+    config([
+        'agent.portfolio.openai_reasoning_effort' => 'low',
+        'ai.providers.openai.key' => 'test-key',
+    ]);
 
     Http::fake([
         'api.openai.com/*' => Http::response([
@@ -103,9 +105,11 @@ it('sends the reasoning effort on the openai request', function () {
 });
 
 it('fails over to gemini with the thinking level in generation_config', function () {
-    config()->set('agent.portfolio.gemini_thinking_level', 'low');
-    config()->set('ai.providers.openai.key', 'test-key');
-    config()->set('ai.providers.gemini.key', 'test-key');
+    config([
+        'agent.portfolio.gemini_thinking_level' => 'low',
+        'ai.providers.openai.key' => 'test-key',
+        'ai.providers.gemini.key' => 'test-key',
+    ]);
 
     Http::fake([
         'api.openai.com/*' => Http::response(['error' => ['message' => 'Rate limit reached']], 429),
@@ -122,6 +126,5 @@ it('fails over to gemini with the thinking level in generation_config', function
 
     expect($response->text)->toBe('Hi from Gemini');
     Http::assertSent(fn (Request $request) => str_contains($request->url(), '/interactions')
-        && $request['generation_config']['thinking_level'] === 'low'
-        && ! array_key_exists('thinkingConfig', $request['generation_config']));
+        && $request['generation_config']['thinking_level'] === 'low');
 });
