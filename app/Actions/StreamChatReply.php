@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Agents\PortfolioAgent;
 use App\Exceptions\ChatUnavailableException;
+use App\Exceptions\ConversationLimitReachedException;
 use App\Services\ChatConversationService;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Responses\StreamableAgentResponse;
@@ -22,6 +23,7 @@ class StreamChatReply
      * completes, the exchange is recorded; a failure to record is logged and never breaks the reply.
      *
      * @throws ChatUnavailableException when the chatbot user hasn't been seeded
+     * @throws ConversationLimitReachedException when the visitor has used up this conversation's turns
      */
     public function execute(string $conversationId, bool $isNewConversation, string $message, ?string $ipAddress): StreamableAgentResponse
     {
@@ -29,6 +31,8 @@ class StreamChatReply
 
         if ($isNewConversation) {
             $this->startConversation->execute($conversationId, $userId, $ipAddress);
+        } elseif ($this->conversations->visitorTurnCount($conversationId) >= config('agent.portfolio.max_conversation_turns')) {
+            throw new ConversationLimitReachedException;
         }
 
         $agent = new PortfolioAgent($this->conversations->recentMessages($conversationId));

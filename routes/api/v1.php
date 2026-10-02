@@ -19,7 +19,7 @@ Route::get('/search', SearchController::class)
 Route::get('/technologies', [TechnologyController::class, 'index'])->name('v1.technologies.index');
 
 Route::post('/chat', ChatController::class)
-    ->middleware(['browser', 'throttle:chat'])
+    ->middleware(['browser', 'throttle:chat', 'turnstile'])
     ->name('v1.chat');
 
 Route::get('/github/activity', [GitHubController::class, 'activity'])

@@ -3,6 +3,7 @@
 use App\Agents\PortfolioAgent;
 use App\Models\Blog;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -281,11 +282,97 @@ it('has multi-tier rate limits configured', function () {
 
     $limits = RateLimiter::limiter('chat')($request);
 
-    expect($limits)->toBeArray()->toHaveCount(3);
+    expect($limits)->toBeArray()->toHaveCount(4);
     expect($limits[0]->maxAttempts)->toBe(10);
     expect($limits[0]->decaySeconds)->toBe(60);
     expect($limits[1]->maxAttempts)->toBe(50);
     expect($limits[1]->decaySeconds)->toBe(3600);
     expect($limits[2]->maxAttempts)->toBe(100);
     expect($limits[2]->decaySeconds)->toBe(86400);
+    expect($limits[3]->maxAttempts)->toBe(config('agent.portfolio.daily_global_limit'));
+    expect($limits[3]->decaySeconds)->toBe(86400);
+    expect($limits[3]->key)->toBe('global');
+});
+
+it('rate limits IPv6 clients by /64 network', function () {
+    $keyFor = function (string $ip): string {
+        $request = Request::create('/api/v1/chat', 'POST');
+        $request->server->set('REMOTE_ADDR', $ip);
+
+        return RateLimiter::limiter('chat')($request)[0]->key;
+    };
+
+    expect($keyFor('2001:db8:1:2::1'))->toBe($keyFor('2001:db8:1:2:ffff:ffff:ffff:9'))
+        ->and($keyFor('2001:db8:1:2::1'))->toStartWith('2001:db8:1:2::/64:')
+        ->and($keyFor('2001:db8:1:2::1'))->not->toBe($keyFor('2001:db8:1:3::1'))
+        ->and($keyFor('203.0.113.7'))->toStartWith('203.0.113.7:');
+});
+
+it('stops a conversation once it reaches the turn limit', function () {
+    config(['agent.portfolio.max_conversation_turns' => 2]);
+    PortfolioAgent::fake(['One', 'Two', 'Three']);
+
+    $first = $this->post('/api/v1/chat', ['message' => 'First'], ['Accept' => 'application/json']);
+    $first->streamedContent();
+    $conversationId = $first->headers->get('X-Conversation-Id');
+
+    $this->post('/api/v1/chat', ['message' => 'Second', 'conversation_id' => $conversationId], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->streamedContent();
+
+    $response = $this->post('/api/v1/chat', ['message' => 'Third', 'conversation_id' => $conversationId], ['Accept' => 'application/json']);
+
+    $response->assertTooManyRequests();
+    expect($response->streamedContent())->toContain('"code":"conversation_limit"')
+        ->and($response->headers->get('X-Conversation-Id'))->toBe($conversationId);
+});
+
+describe('turnstile', function () {
+    beforeEach(function () {
+        config(['services.turnstile.secret_key' => 'turnstile-secret']);
+        PortfolioAgent::fake(['Hello!']);
+    });
+
+    it('rejects chat without a token', function () {
+        Http::fake();
+
+        $response = $this->post('/api/v1/chat', ['message' => 'Hello there'], ['Accept' => 'application/json']);
+
+        $response->assertForbidden();
+        expect($response->streamedContent())->toContain('"code":"verification_failed"');
+        Http::assertNothingSent();
+    });
+
+    it('rejects a token Cloudflare says is invalid', function () {
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => false, 'error-codes' => ['invalid-input-response']])]);
+
+        $this->post('/api/v1/chat', ['message' => 'Hello there'], ['Accept' => 'application/json', 'X-Turnstile-Token' => 'bad'])
+            ->assertForbidden();
+    });
+
+    it('fails closed when Cloudflare is unreachable', function () {
+        Http::fake(['challenges.cloudflare.com/*' => fn () => throw new ConnectionException('timeout')]);
+
+        $this->post('/api/v1/chat', ['message' => 'Hello there'], ['Accept' => 'application/json', 'X-Turnstile-Token' => 'tok'])
+            ->assertForbidden();
+    });
+
+    it('lets a verified visitor chat', function () {
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true])]);
+
+        $this->post('/api/v1/chat', ['message' => 'Hello there'], ['Accept' => 'application/json', 'X-Turnstile-Token' => 'good'])
+            ->assertOk();
+
+        Http::assertSent(fn ($request) => $request['secret'] === 'turnstile-secret'
+            && $request['response'] === 'good'
+            && $request['remoteip'] === '127.0.0.1');
+    });
+
+    it('is skipped when no secret is configured', function () {
+        config(['services.turnstile.secret_key' => null]);
+        Http::fake();
+
+        $this->post('/api/v1/chat', ['message' => 'Hello there'], ['Accept' => 'application/json'])->assertOk();
+        Http::assertNothingSent();
+    });
 });

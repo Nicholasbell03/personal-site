@@ -22,7 +22,13 @@ return [
         // Attribute-only (framework limitation) — change in PortfolioAgent class.
         // No temperature: OpenAI rejects it alongside reasoning.effort.
         'max_tokens' => 2048,
-        'max_steps' => 7,
+        'max_steps' => 4,
+
+        // Cost controls for the public chat. The daily limit is shared by every
+        // visitor, so rotating IPs can't run up an unbounded bill.
+        'daily_global_limit' => (int) env('PORTFOLIO_AGENT_DAILY_LIMIT', 500),
+        'max_conversation_turns' => (int) env('PORTFOLIO_AGENT_MAX_TURNS', 20),
+        'history_messages' => 8,
     ],
 
 ];

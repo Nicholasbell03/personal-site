@@ -62,6 +62,10 @@ return [
         'access_token_secret' => env('X_ACCESS_TOKEN_SECRET'),
     ],
 
+    'turnstile' => [
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'linkedin' => [
         'access_token' => env('LINKEDIN_ACCESS_TOKEN'),
         'person_id' => env('LINKEDIN_PERSON_ID'),

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\RequireCronSecret;
 use App\Http\Middleware\ValidateBrowserRequest;
+use App\Http\Middleware\VerifyTurnstile;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'browser' => ValidateBrowserRequest::class,
             'abilities' => CheckAbilities::class,
             'cron' => RequireCronSecret::class,
+            'turnstile' => VerifyTurnstile::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
