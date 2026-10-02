@@ -3,6 +3,7 @@
         "claude_code",
         "cursor"
     ],
+    "cloud": false,
     "guidelines": true,
     "herd_mcp": false,
     "mcp": true,
@@ -12,9 +13,11 @@
     ],
     "sail": false,
     "skills": [
+        "infer-conventions",
         "ai-sdk-development",
         "laravel-best-practices",
-        "pest-testing",
+        "testing-best-practices",
+        "filament-development",
         "laravel-specialist",
         "php-pro"
     ]
