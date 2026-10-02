@@ -25,7 +25,7 @@ use Laravel\Ai\Promptable;
 
 // No Temperature attribute: OpenAI rejects temperature when reasoning.effort
 // is set ("Unsupported parameter"), and reasoning models ignore it anyway.
-#[MaxSteps(7)]
+#[MaxSteps(4)]
 #[MaxTokens(2048)]
 class PortfolioAgent implements Agent, Conversational, HasProviderOptions, HasTools
 {

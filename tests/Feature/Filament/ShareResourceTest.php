@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->admin()->create();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 

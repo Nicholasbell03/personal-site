@@ -41,7 +41,7 @@ it('returns 200 from cron route when token is valid', function () {
         'https://api.linkedin.com/v2/userinfo' => Http::response(['sub' => '123'], 200),
     ]);
 
-    $this->getJson('/api/check-linkedin-token')
+    $this->withHeader('X-Cron-Secret', 'test-cron-secret')->getJson('/api/check-linkedin-token')
         ->assertSuccessful()
         ->assertJson(['status' => 'ok']);
 });
@@ -53,7 +53,7 @@ it('returns 503 from cron route when token is expired', function () {
         'https://api.linkedin.com/v2/userinfo' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
 
-    $this->getJson('/api/check-linkedin-token')
+    $this->withHeader('X-Cron-Secret', 'test-cron-secret')->getJson('/api/check-linkedin-token')
         ->assertServiceUnavailable()
         ->assertJson(['status' => 'error']);
 });

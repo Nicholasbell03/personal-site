@@ -7,7 +7,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->admin()->create();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
@@ -22,14 +22,28 @@ it('can generate a new token', function () {
         ->test(ApiTokens::class)
         ->mountAction('generate')
         ->set('mountedActions.0.data.name', 'test-token')
+        ->set('mountedActions.0.data.abilities', ['shares:create'])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 
-    $this->user->refresh();
+    $token = $this->user->tokens()->sole();
 
-    expect($this->user->tokens)->toHaveCount(1);
-    expect($this->user->tokens->first()->name)->toBe('test-token');
-    expect($component->get('plainTextToken'))->not->toBeNull();
+    expect($token->name)->toBe('test-token')
+        ->and($token->abilities)->toBe(['shares:create'])
+        ->and($token->expires_at->isBetween(now()->addDays(89), now()->addDays(91)))->toBeTrue()
+        ->and($component->get('plainTextToken'))->toStartWith($token->id.'|nbd_');
+});
+
+it('requires at least one ability', function () {
+    Livewire::actingAs($this->user)
+        ->test(ApiTokens::class)
+        ->mountAction('generate')
+        ->set('mountedActions.0.data.name', 'no-scope')
+        ->set('mountedActions.0.data.abilities', [])
+        ->callMountedAction()
+        ->assertHasActionErrors(['abilities' => 'required']);
+
+    expect($this->user->tokens)->toHaveCount(0);
 });
 
 it('requires a token name', function () {
@@ -84,6 +98,7 @@ it('can dismiss the token banner', function () {
         ->test(ApiTokens::class)
         ->mountAction('generate')
         ->set('mountedActions.0.data.name', 'temp-token')
+        ->set('mountedActions.0.data.abilities', ['media:upload'])
         ->callMountedAction()
         ->assertHasNoActionErrors();
 

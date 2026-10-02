@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SourceType;
 use App\Models\User;
 use App\Services\OpenGraphService;
 use App\Services\SummaryService;
@@ -17,7 +18,7 @@ it('creates a share with valid sanctum token', function () {
             'image' => 'https://example.com/image.jpg',
             'site_name' => 'Example',
             'author' => 'John Doe',
-            'source_type' => \App\Enums\SourceType::Webpage,
+            'source_type' => SourceType::Webpage,
             'embed_data' => null,
             'og_raw' => ['og:title' => 'Fetched Title'],
         ]);
@@ -90,7 +91,7 @@ it('uses user-provided title over OG title', function () {
             'image' => null,
             'site_name' => null,
             'author' => null,
-            'source_type' => \App\Enums\SourceType::Webpage,
+            'source_type' => SourceType::Webpage,
             'embed_data' => null,
             'og_raw' => null,
         ]);
@@ -123,7 +124,7 @@ it('persists post_to_x when provided', function () {
             'image' => null,
             'site_name' => null,
             'author' => null,
-            'source_type' => \App\Enums\SourceType::Webpage,
+            'source_type' => SourceType::Webpage,
             'embed_data' => null,
             'og_raw' => null,
         ]);
@@ -143,7 +144,7 @@ it('persists post_to_x when provided', function () {
     ]);
 });
 
-it('defaults post_to_x to true when not provided', function () {
+it('defaults post_to_x to false when not provided', function () {
     $user = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
 
@@ -156,7 +157,7 @@ it('defaults post_to_x to true when not provided', function () {
             'image' => null,
             'site_name' => null,
             'author' => null,
-            'source_type' => \App\Enums\SourceType::Webpage,
+            'source_type' => SourceType::Webpage,
             'embed_data' => null,
             'og_raw' => null,
         ]);
@@ -171,7 +172,7 @@ it('defaults post_to_x to true when not provided', function () {
 
     $this->assertDatabaseHas('shares', [
         'url' => 'https://example.com/article',
-        'post_to_x' => true,
+        'post_to_x' => false,
     ]);
 });
 
@@ -188,7 +189,7 @@ it('returns 201 with warnings when a post-creation job fails on sync queue', fun
             'image' => null,
             'site_name' => null,
             'author' => null,
-            'source_type' => \App\Enums\SourceType::Webpage,
+            'source_type' => SourceType::Webpage,
             'embed_data' => null,
             'og_raw' => null,
         ]);
@@ -197,7 +198,7 @@ it('returns 201 with warnings when a post-creation job fails on sync queue', fun
     // Mock SummaryService to throw, simulating sync queue job failure
     $this->mock(SummaryService::class, function ($mock) {
         $mock->shouldReceive('generate')
-            ->andThrow(new \RuntimeException('AI service unavailable'));
+            ->andThrow(new RuntimeException('AI service unavailable'));
     });
 
     $response = $this->withHeader('Authorization', "Bearer {$token}")

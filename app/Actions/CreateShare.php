@@ -30,7 +30,8 @@ class CreateShare
             'commentary' => $attributes['commentary'] ?? null,
             'embed_data' => $ogData['embed_data'],
             'og_raw' => $ogData['og_raw'],
-            'post_to_x' => $attributes['post_to_x'] ?? true,
+            // Opt-in: an API client (or a leaked token) shouldn't post to X unless asked to.
+            'post_to_x' => $attributes['post_to_x'] ?? false,
         ]);
     }
 }

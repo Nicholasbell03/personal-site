@@ -53,7 +53,7 @@ it('serves pagination links for the endpoint after warming over http', function 
     Cache::flush();
 
     // cronjob.org warms the cache over HTTP, so the command runs inside a GET /api/warm-cache request.
-    $this->getJson('/api/warm-cache')->assertOk();
+    $this->withHeader('X-Cron-Secret', 'test-cron-secret')->getJson('/api/warm-cache')->assertOk();
 
     foreach (['blogs', 'projects', 'shares'] as $type) {
         $page = $this->getJson("/api/v1/{$type}")->assertOk();

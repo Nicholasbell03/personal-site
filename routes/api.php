@@ -19,7 +19,7 @@ Route::get('/health', function () {
     ]);
 });
 
-Route::get('/warm-cache', function () {
+Route::middleware('cron')->get('/warm-cache', function () {
     Artisan::call('api:warm-cache');
 
     return response()->json([
@@ -29,7 +29,7 @@ Route::get('/warm-cache', function () {
     ]);
 });
 
-Route::middleware('throttle:6,10')->get('/warm-frontend', function () {
+Route::middleware(['cron', 'throttle:6,10'])->get('/warm-frontend', function () {
     $exitCode = Artisan::call('frontend:warm-pages');
 
     if ($exitCode !== 0) {
@@ -47,7 +47,7 @@ Route::middleware('throttle:6,10')->get('/warm-frontend', function () {
     ]);
 });
 
-Route::get('/check-linkedin-token', function () {
+Route::middleware('cron')->get('/check-linkedin-token', function () {
     $exitCode = Artisan::call('linkedin:check-token');
 
     if ($exitCode !== 0) {

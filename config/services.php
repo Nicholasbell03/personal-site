@@ -48,6 +48,9 @@ return [
         'provider' => env('EMBEDDING_PROVIDER', 'openai'),
         'model' => env('EMBEDDING_MODEL', 'text-embedding-3-large'),
         'dimensions' => (int) env('EMBEDDING_DIMENSIONS', 1536),
+        // Search-query embeddings (~30KB each, one per unique query) live in their own store:
+        // the database store never prunes expired rows, so public searches could fill the DB.
+        'query_cache_store' => env('EMBEDDING_QUERY_CACHE_STORE', 'file'),
     ],
 
     'summary' => [
@@ -60,6 +63,10 @@ return [
         'api_secret' => env('X_API_SECRET'),
         'access_token' => env('X_ACCESS_TOKEN'),
         'access_token_secret' => env('X_ACCESS_TOKEN_SECRET'),
+    ],
+
+    'turnstile' => [
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
     'linkedin' => [

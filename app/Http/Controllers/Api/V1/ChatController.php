@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\StreamChatReply;
 use App\Exceptions\ChatUnavailableException;
+use App\Exceptions\ConversationLimitReachedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ChatRequest;
+use App\Http\Responses\SseErrorResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
@@ -68,6 +70,18 @@ class ChatController extends Controller
                 'X-Accel-Buffering' => 'no',
                 'X-Conversation-Id' => $conversationId,
             ]);
+        } catch (ConversationLimitReachedException) {
+            Log::warning('ChatController: conversation turn limit reached', [
+                'conversation_id' => $conversationId,
+                'ip' => $request->ip(),
+            ]);
+
+            return SseErrorResponse::make(
+                'This conversation has reached its message limit. Start a new chat to keep going.',
+                'conversation_limit',
+                429,
+                $conversationId,
+            );
         } catch (ChatUnavailableException) {
             Log::error('ChatController: chatbot user not found — run ChatbotUserSeeder', [
                 'email' => config('chat.user.email'),
@@ -81,7 +95,7 @@ class ChatController extends Controller
 
             [$code, $message] = $this->streamErrorDetails($e);
 
-            return $this->sseError($message, $conversationId, $code, 429);
+            return SseErrorResponse::make($message, $code, 429, $conversationId);
         } catch (ProviderConnectionException $e) {
             Log::warning('ChatController: AI provider connection failed', [
                 'conversation_id' => $conversationId,
@@ -90,7 +104,7 @@ class ChatController extends Controller
 
             [$code, $message] = $this->streamErrorDetails($e);
 
-            return $this->sseError($message, $conversationId, $code, 503);
+            return SseErrorResponse::make($message, $code, 503, $conversationId);
         } catch (\Throwable $e) {
             Log::error('ChatController: agent streaming failed', [
                 'conversation_id' => $conversationId,
@@ -105,7 +119,7 @@ class ChatController extends Controller
 
             [$code, $message] = $this->streamErrorDetails($e);
 
-            return $this->sseError($message, $conversationId, $code, 500);
+            return SseErrorResponse::make($message, $code, 500, $conversationId);
         }
     }
 
@@ -137,36 +151,5 @@ class ChatController extends Controller
                 'Something went wrong while generating the response. Please try again.',
             ],
         };
-    }
-
-    /**
-     * Return an SSE-formatted error response so the frontend can display
-     * a meaningful message instead of hanging or showing a generic 500.
-     *
-     * The HTTP status allows monitoring and load balancers to detect failures,
-     * while the SSE body keeps the frontend's event-stream parser happy.
-     */
-    private function sseError(string $message, string $conversationId, string $code, int $status): Response
-    {
-        return response()->stream(function () use ($message, $code) {
-            $event = json_encode([
-                'type' => 'error',
-                'code' => $code,
-                'message' => $message,
-            ]);
-            echo "data: {$event}\n\n";
-            echo "data: [DONE]\n\n";
-
-            while (ob_get_level() > 0) {
-                ob_end_flush();
-            }
-            flush();
-        }, $status, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'X-Accel-Buffering' => 'no',
-            'X-Conversation-Id' => $conversationId,
-            'X-Chat-Error' => 'true',
-        ]);
     }
 }

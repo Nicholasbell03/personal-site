@@ -2,8 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\TokenAbility;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -46,9 +50,23 @@ class ApiTokens extends Page implements HasTable
                         ->placeholder('e.g. shares-extension')
                         ->required()
                         ->maxLength(255),
+                    CheckboxList::make('abilities')
+                        ->label('Abilities')
+                        ->helperText('Grant only what this client needs.')
+                        ->options(TokenAbility::options())
+                        ->required(),
+                    Select::make('expires_in_days')
+                        ->label('Expires after')
+                        ->options([30 => '30 days', 90 => '90 days', 365 => '1 year'])
+                        ->default(90)
+                        ->required(),
                 ])
                 ->action(function (array $data): void {
-                    $token = auth()->user()->createToken($data['name']);
+                    $token = auth()->user()->createToken(
+                        $data['name'],
+                        $data['abilities'],
+                        now()->addDays((int) $data['expires_in_days']),
+                    );
 
                     $this->plainTextToken = $token->plainTextToken;
                 }),
@@ -74,6 +92,12 @@ class ApiTokens extends Page implements HasTable
                     ->badge()
                     ->getStateUsing(fn (PersonalAccessToken $record): string => implode(', ', $record->abilities))
                     ->color('gray'),
+                TextColumn::make('expires_at')
+                    ->label('Expires')
+                    ->dateTime()
+                    ->placeholder('Never')
+                    ->color(fn (PersonalAccessToken $record): ?string => $record->expires_at?->isPast() ? 'danger' : null)
+                    ->sortable(),
                 TextColumn::make('last_used_at')
                     ->label('Last Used')
                     ->dateTime()
@@ -86,7 +110,7 @@ class ApiTokens extends Page implements HasTable
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([
-                \Filament\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->label('Revoke')
                     ->modalHeading('Revoke Token')
                     ->modalDescription(fn (PersonalAccessToken $record): string => "Are you sure you want to revoke the \"{$record->name}\" token? Any clients using it will lose access immediately.")

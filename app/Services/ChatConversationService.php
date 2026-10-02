@@ -38,8 +38,10 @@ class ChatConversationService
      *
      * @return list<Message>
      */
-    public function recentMessages(string $conversationId, int $limit = 20): array
+    public function recentMessages(string $conversationId, ?int $limit = null): array
     {
+        $limit ??= config('agent.portfolio.history_messages');
+
         return DB::table('agent_conversation_messages')
             ->where('conversation_id', $conversationId)
             ->orderByDesc('id')
@@ -49,5 +51,16 @@ class ChatConversationService
             ->values()
             ->map(fn ($m) => new Message($m->role, $m->content))
             ->all();
+    }
+
+    /**
+     * How many messages the visitor has sent in this conversation.
+     */
+    public function visitorTurnCount(string $conversationId): int
+    {
+        return DB::table('agent_conversation_messages')
+            ->where('conversation_id', $conversationId)
+            ->where('role', 'user')
+            ->count();
     }
 }

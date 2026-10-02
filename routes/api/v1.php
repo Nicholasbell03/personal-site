@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TokenAbility;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\GitHubController;
@@ -18,7 +19,7 @@ Route::get('/search', SearchController::class)
 Route::get('/technologies', [TechnologyController::class, 'index'])->name('v1.technologies.index');
 
 Route::post('/chat', ChatController::class)
-    ->middleware(['browser', 'throttle:chat'])
+    ->middleware(['browser', 'throttle:chat', 'turnstile'])
     ->name('v1.chat');
 
 Route::get('/github/activity', [GitHubController::class, 'activity'])
@@ -47,10 +48,11 @@ Route::prefix('shares')->group(function () {
     Route::get('/{slug}', [ShareController::class, 'show'])->name('v1.shares.show');
 });
 
+// Each write route requires a token scoped to it (see TokenAbility); legacy '*' tokens pass every check.
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/blogs', [BlogController::class, 'store'])->name('v1.blogs.store');
-    Route::patch('/blogs/{blog}', [BlogController::class, 'update'])->whereNumber('blog')->name('v1.blogs.update');
-    Route::post('/media', [MediaController::class, 'store'])->middleware('throttle:30,1')->name('v1.media.store');
-    Route::post('/projects', [ProjectController::class, 'store'])->name('v1.projects.store');
-    Route::post('/shares', [ShareController::class, 'store'])->name('v1.shares.store');
+    Route::post('/blogs', [BlogController::class, 'store'])->middleware(TokenAbility::BlogsWrite->middleware())->name('v1.blogs.store');
+    Route::patch('/blogs/{blog}', [BlogController::class, 'update'])->middleware(TokenAbility::BlogsWrite->middleware())->whereNumber('blog')->name('v1.blogs.update');
+    Route::post('/media', [MediaController::class, 'store'])->middleware([TokenAbility::MediaUpload->middleware(), 'throttle:30,1'])->name('v1.media.store');
+    Route::post('/projects', [ProjectController::class, 'store'])->middleware(TokenAbility::ProjectsWrite->middleware())->name('v1.projects.store');
+    Route::post('/shares', [ShareController::class, 'store'])->middleware(TokenAbility::SharesCreate->middleware())->name('v1.shares.store');
 });
