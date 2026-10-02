@@ -4,12 +4,17 @@ namespace App\Services;
 
 use App\Enums\SourceType;
 use App\Models\Share;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class OpenGraphService
 {
+    private const MAX_REDIRECTS = 3;
+
     /** @var list<string> */
     private const X_RESERVED_PATHS = ['i'];
 
@@ -316,20 +321,12 @@ class OpenGraphService
      */
     private function fetchViaOgScraping(string $url, SourceType $sourceType, ?array $embedData): array
     {
-        if (! $this->isSafeUrl($url)) {
-            return $this->emptyResult($sourceType, $embedData);
-        }
-
         try {
-            /** @var Response $response */
-            $response = Http::timeout(10)
-                ->maxRedirects(3)
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
-                    'Accept' => 'text/html',
-                    'Accept-Language' => 'en-US,en;q=0.9',
-                ])
-                ->get($url);
+            $response = $this->fetchSafely($url);
+
+            if ($response === null) {
+                return $this->emptyResult($sourceType, $embedData);
+            }
 
             if (! $response->successful()) {
                 Log::warning('OpenGraph fetch failed: non-successful HTTP response', [
@@ -453,9 +450,61 @@ class OpenGraphService
     // ── Security (private) ──────────────────────────────────────
 
     /**
-     * Validate that a URL is safe to fetch (prevents SSRF).
+     * GET a URL, following up to MAX_REDIRECTS redirects by hand so every hop passes the SSRF check,
+     * and pinning each connection to the IP that was checked (no DNS rebinding between check and fetch).
+     * Returns null when any hop is unsafe or there are too many redirects.
      */
-    private function isSafeUrl(string $url): bool
+    private function fetchSafely(string $url): ?Response
+    {
+        for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
+            $ip = $this->resolveSafeIp($url);
+
+            if ($ip === null) {
+                return null;
+            }
+
+            /** @var Response $response */
+            $response = Http::timeout(10)
+                ->withoutRedirecting()
+                ->withOptions(['curl' => [CURLOPT_RESOLVE => [$this->curlResolveEntry($url, $ip)]]])
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (compatible; NickBellBot/1.0; +https://nickbell.dev)',
+                    'Accept' => 'text/html',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                ])
+                ->get($url);
+
+            $location = $response->header('Location');
+
+            if (! $response->redirect() || $location === '') {
+                return $response;
+            }
+
+            $url = (string) UriResolver::resolve(new Uri($url), new Uri($location));
+        }
+
+        Log::warning('OpenGraph fetch failed: too many redirects', ['url' => $url]);
+
+        return null;
+    }
+
+    /**
+     * Pin host:port to the checked IP for curl (IPv6 addresses need brackets).
+     */
+    private function curlResolveEntry(string $url, string $ip): string
+    {
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $port = parse_url($url, PHP_URL_PORT) ?? ($scheme === 'https' ? 443 : 80);
+        $host = (string) parse_url($url, PHP_URL_HOST);
+
+        return sprintf('%s:%d:%s', $host, $port, str_contains($ip, ':') ? "[{$ip}]" : $ip);
+    }
+
+    /**
+     * Validate that a URL is safe to fetch (prevents SSRF) and return the public IP to connect to,
+     * or null when the scheme, host or any resolved address is unsafe.
+     */
+    private function resolveSafeIp(string $url): ?string
     {
         $scheme = parse_url($url, PHP_URL_SCHEME);
 
@@ -465,7 +514,7 @@ class OpenGraphService
                 'scheme' => $scheme,
             ]);
 
-            return false;
+            return null;
         }
 
         $host = parse_url($url, PHP_URL_HOST);
@@ -475,10 +524,14 @@ class OpenGraphService
                 'url' => $url,
             ]);
 
-            return false;
+            return null;
         }
 
-        $records = @dns_get_record($host, DNS_A | DNS_AAAA);
+        $host = trim($host, '[]');
+
+        $records = filter_var($host, FILTER_VALIDATE_IP)
+            ? [['ip' => $host]]
+            : @dns_get_record($host, DNS_A | DNS_AAAA);
 
         if ($records === false || empty($records)) {
             Log::warning('OpenGraph SSRF check failed: DNS resolution returned no records', [
@@ -486,8 +539,10 @@ class OpenGraphService
                 'host' => $host,
             ]);
 
-            return false;
+            return null;
         }
+
+        $safeIp = null;
 
         foreach ($records as $record) {
             $ip = $record['ip'] ?? $record['ipv6'] ?? null;
@@ -496,18 +551,21 @@ class OpenGraphService
                 continue;
             }
 
-            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            // PHP's private/reserved filter doesn't cover carrier-grade NAT (100.64.0.0/10).
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) || IpUtils::checkIp($ip, '100.64.0.0/10')) {
                 Log::warning('OpenGraph SSRF check failed: resolved to private/reserved IP', [
                     'url' => $url,
                     'host' => $host,
                     'ip' => $ip,
                 ]);
 
-                return false;
+                return null;
             }
+
+            $safeIp ??= $ip;
         }
 
-        return true;
+        return $safeIp;
     }
 
     // ── HTML parsing (private) ──────────────────────────────────
