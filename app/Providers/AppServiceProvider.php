@@ -34,8 +34,6 @@ class AppServiceProvider extends ServiceProvider
             Limit::perDay(1000)->by($request->ip()),
         ]);
 
-        LogViewer::auth(function ($request) {
-            return $request->user()?->email === config('log-viewer.admin_email');
-        });
+        LogViewer::auth(fn ($request): bool => (bool) $request->user()?->isAdmin());
     }
 }

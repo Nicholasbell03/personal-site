@@ -7,7 +7,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->admin()->create();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 

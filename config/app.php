@@ -137,4 +137,16 @@ return [
 
     'preview_token' => env('PREVIEW_TOKEN'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Email
+    |--------------------------------------------------------------------------
+    |
+    | The only account allowed into the Filament panel and the log viewer.
+    | Access is denied to everyone when this is unset.
+    |
+    */
+
+    'admin_email' => env('ADMIN_EMAIL'),
+
 ];

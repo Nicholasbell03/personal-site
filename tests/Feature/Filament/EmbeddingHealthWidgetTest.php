@@ -11,7 +11,7 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     Queue::fake();
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->admin()->create();
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
